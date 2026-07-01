@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="main/LifeInsuranceCRM.API.csproj" />
+  <Project Path="orchestration/LifeInsuranceCRM.AppHost/LifeInsuranceCRM.AppHost.csproj" Id="a4c68e87-b34d-40d3-9d36-81129ba17b46" />
+  <Project Path="orchestration/LifeInsuranceCRM.ServiceDefaults/LifeInsuranceCRM.ServiceDefaults.csproj" />
 </Solution>
