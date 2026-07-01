@@ -1,0 +1,24 @@
+---
+description: Repository implementations — IDbExecutor, SQL, registration
+globs: "**/LifeInsuranceCRM.Data/**/*.cs"
+alwaysApply: false
+---
+
+# Data layer (`LifeInsuranceCRM.Data`)
+
+## Responsibilities
+
+Implement **`Core.Abstractions.Data`** repository interfaces. **No business rules** (ownership, “can user do X?”)—those belong in Core use cases.
+
+## SQL access
+
+- Inject **`IDbExecutor`** and use its async methods (`ExecuteReader`, `ExecuteNonQuery`, etc.) with **parameterized** `SqlParameter` values (or existing helpers such as **`ISqlParameterUtility`**).
+- Do **not** introduce Entity Framework Core `DbContext` for this solution's main persistence path.
+
+## Mappers
+
+- DB reader / row mapping: prefer **`LifeInsuranceCRM.Data.Mappers`** types (e.g. `I{Entity}Mapper` Data implementation). Core-facing contracts for domain mapping stay in Core when they are Core concerns.
+
+## Registration
+
+- Add **`services.AddScoped<IYourRepository, YourRepository>()`** (or appropriate lifetime) in **`DependencyInjectionExtensions.AddDataServices`**.

@@ -1,0 +1,138 @@
+---
+description: LifeInsuranceCRM API codebase architecture, layers, and coding style
+alwaysApply: true
+---
+
+# LifeInsuranceCRM API – Architecture & Style
+
+## Project Structure
+
+```
+src/
+├── main/                    # Production assemblies
+│   ├── LifeInsuranceCRM.API/       # Controllers, middleware, auth
+│   ├── LifeInsuranceCRM.Core/      # Use cases, abstractions, models, mappers
+│   ├── LifeInsuranceCRM.Data/      # Repositories, SQL, persistence mappers
+│   ├── LifeInsuranceCRM.Providers/  # External API integrations
+│   ├── LifeInsuranceCRM.Emails/    # Email sending
+│   └── LifeInsuranceCRM.Utilities/ # Shared utilities (EtmException, UseCaseStatus)
+├── LifeInsuranceCRM.Core.Tests/
+├── LifeInsuranceCRM.API.Tests/
+└── LifeInsuranceCRM.Tests.Utilities/  # TestBase, UseCaseTestBase, FixtureExtensions
+```
+
+**Use case tests**: When writing or adding a new use case test class, follow `.cursor/rules/use-case-test-structure.mdc`: scenario `{Scenario}_Setup` / `{Scenario}` pattern, one assertion per test, concrete values in Setups. Copy structure from an existing test in the same feature folder when one exists.
+
+## Architectural Layers
+
+1. **API** → thin controllers, auth filters, exception handler. No business logic. See `.cursor/rules/api-http-controllers.mdc` when editing controllers.
+2. **Core** → use cases (business logic), repository/provider **interfaces** under `Abstractions` (`Abstractions.Data`, `Abstractions.Providers`, `Abstractions.Emails`), models in `Models.Input` / `Models.Output` / `Models.Requests`, config in `Config`.
+3. **Data** → repositories implementing `Core.Abstractions.Data.*`. **SQL Server via `IDbExecutor`** (parameterized SQL, `Microsoft.Data.SqlClient`). This solution does **not** use Entity Framework Core in the Data project. Persistence mappers live in `LifeInsuranceCRM.Data.Mappers` when needed. When editing Data, see `.cursor/rules/data-repositories.mdc`.
+4. **Providers** → external services. Core defines contracts in `Abstractions.Providers` (and email-related abstractions under `Abstractions.Emails`); implementations live in `LifeInsuranceCRM.Providers` / `LifeInsuranceCRM.Emails`.
+
+## Use Case Pattern
+
+- Use case + interface **in same file** (e.g. `Create{Entity}UseCase` and `ICreate{Entity}UseCase`). File name: `{Action}{Entity}UseCase.cs` (not separate `I*.cs` files).
+- `Execute` returns `Task<ProcessResponse<T>>`. Use `UseCaseStatus` for status (Success, NotFound, InvalidRequest, Failure, Unauthorized, Forbidden, Conflict). Prefer `ProcessResponse<T>.Succeeded(result)` and `ProcessResponse<T>.WithStatus(status, message, errorCode)`; use `ProcessResponse<T>.InvalidRequestResponse` when appropriate.
+- **Never use `null` as a success/failure signal.** Validators, gates, and use cases must always return `ProcessResponse<T>` (not `ProcessResponse<T>?`). Check `Status == UseCaseStatus.Success` (or `!= Success`) — do not return `null` to mean “validation passed” or treat a null return as not found. On failure, `Result` may be `default`; callers must branch on `Status`. Propagate failures with `validation.MapResult<TTarget>()`.
+- **Execute signatures**: either explicit parameters (common) or `ProcessRequest<TPayload>` when bundling a request DTO with `CancellationToken`. Controllers often use `IProcessRequestFactory.Create(new SomeRequest(...), cancellationToken)`; inside Core, `ProcessRequest<T>.From(payload, ct)` is also used (e.g. tests).
+- Controllers: do not resolve the current user in the controller. The authenticated user is available in Core via `IActorTracker`, populated per request by auth middleware/filters. Inject use cases via `[FromServices]`; map results with `ProcessResponseExtensions.ToActionResult` (see `LifeInsuranceCRM.API.Utilities`).
+
+```csharp
+// Controller
+var response = await useCase.Execute(model, cancellationToken);
+return response.ToActionResult(r => Ok(r));
+
+// Use case (current user from actor)
+public async Task<ProcessResponse<{Entity}>> Execute(Create{Entity}Model model, CancellationToken ct = default)
+
+// Validator / gate — always return ProcessResponse; never null for “valid”
+public ProcessResponse<{ValidatedInput}> Validate(Guid entityId, Create{Entity}Dto dto)
+{
+    if (entityId == Guid.Empty)
+        return ProcessResponse<{ValidatedInput}>.WithStatus(UseCaseStatus.InvalidRequest, "Invalid id", ApiErrorCodes.{Entity}IdInvalid);
+    return ProcessResponse<{ValidatedInput}>.Succeeded(new {ValidatedInput}(...));
+}
+```
+
+## Static helpers vs services
+
+**If a solution is full of Helper or Utils classes, that's a code smell.**
+
+- **Keep static** only for **pure utilities**: string parsing/normalization, hashing, math, SQL LIKE escaping, constants, DI registration extensions, and thin ASP.NET extension methods with no domain rules.
+- **Put business logic in injectable services** with interfaces: validation, authorization/entitlement rules, orchestration (email send, enqueue), get-or-create flows, payment JSON extraction, date-range business defaults, DTO mapping with domain meaning.
+- Register shared services in `DependencyInjectionExtensions.AddSharedCoreServices()` (called from both `AddCoreServices()` and any worker entry points). Feature-specific mappers may also register in `*UseCaseRegistration` or `AddDataServices` when appropriate.
+
+```csharp
+// ❌ BAD — side effects + domain rules in a static guard
+internal static class {Entity}Guards
+{
+    public static async Task<{Entity}> EnsureExistsAsync(..., I{Entity}Repository repo, ...)
+    {
+        // get-or-create, InsertAsync
+    }
+}
+
+// ✅ GOOD — testable service
+public interface I{Entity}Service
+{
+    Task<{Entity}> EnsureForUserAsync(string userId, CancellationToken cancellationToken = default);
+}
+```
+
+**OK as static:** pure string/date/math helpers, `Guard`, `*UseCaseRegistration`, constants/enums.
+
+**Use a service instead:** domain guards, entitlement limits, email job send/enqueue, validation with business rules, blob hashing with I/O, SKU/tier mapping, payment extraction, date-range defaults, API response mappers used from controllers.
+
+## Repository & Mapper Conventions
+
+- Interface in `Core.Abstractions.Data` (e.g. `I{Entity}Repository`), implementation in `Data.Repositories`, registered in `LifeInsuranceCRM.Data.DependencyInjectionExtensions.AddDataServices`.
+- Entities / DB-shaped types: `Core.Entities` where shared with Core; Data may use additional persistence types. Repositories use `IDbExecutor` (`ExecuteReader`, `ExecuteNonQuery`, etc.)—keep SQL and parameters in the repository or small helpers.
+- Mappers: Core mappers (e.g. domain/output mapping) in `Core.Mappers` as `I*Mapper`; Data layer mappers (e.g. `IDataReader` → entity) in `Data.Mappers` as needed. Mappers are typically **scoped** services.
+
+## Configuration
+
+- Options classes in `Core.Config` (e.g. `{Feature}Options`). Bound in `Program.cs`; Core receives options via DI, **not** `IConfiguration`.
+
+## Error Handling
+
+- Domain errors: throw `EtmException` with `UseCaseStatus`. `GlobalExceptionHandler` maps to HTTP status and `ProblemDetailsDto`.
+- Use `ProcessResponse` for expected failures (invalid input, not found); do not throw for normal flow.
+
+### Database + blob / external store (no shared transaction)
+
+SQL Server and external blob/storage APIs **cannot** enlist in one transaction. Any use case that removes data from **both** must use a **compensating pattern**:
+
+1. **Persist first:** delete the **database** row (or write the authoritative “removed” state) **before** calling the external API.
+2. **Then** delete the blob / remote resource.
+3. If the external delete **fails** or returns `false`: **restore** the database row (e.g. `Save` / `InsertAsync` with the in-memory entity you held) and return `ProcessResponse` with `UseCaseStatus.Failure` and a clear message.
+
+Avoid deleting the **blob first** then the row without a recovery path—that can orphan metadata or lose the pointer to clean up storage later.
+
+## Worker use cases (Azure Functions / queue)
+
+HTTP use cases return `ProcessResponse<T>` + `UseCaseStatus`. **Queue orchestrators** may use a domain-specific status enum when retry/dead-letter semantics differ from HTTP:
+
+- Orchestrator use case returns a dedicated status enum (e.g. Success, Failed, Skipped).
+- Handlers implement a narrower interface per job/kind; register via `{Feature}UseCaseRegistration.Add{Feature}UseCases()`.
+
+Worker-specific DI entry points should register only the worker subgraph. The full API uses `AddCoreServices()`.
+
+Unexpected worker failures may still throw; the function trigger handles retries/dead-letter. Expected outcomes (skip, unsupported version) use the orchestrator status enum—not `ProcessResponse`.
+
+## Naming & Style
+
+- Private fields: `_camelCase`.
+- Request DTOs: `*Request` in `Models.Requests`. Input models: `*Model` in `Models.Input`. Output: `Models.Output.*`.
+- Namespaces: match folder structure (e.g. `LifeInsuranceCRM.Core.UseCases.{Feature}`).
+
+## Dependency registration
+
+- `Program.cs`: `AddDataServices()`, `AddCoreServices()`, provider/email registration, options built from `IConfiguration` once.
+- **Shared Core services** (sanitizers, `IProcessRequestFactory`, cross-cutting mappers, shared domain helpers): register in `DependencyInjectionExtensions.AddSharedCoreServices()`; `AddCoreServices()` and worker entry points both call it.
+- **Use cases**: register in the feature folder’s `*UseCaseRegistration.cs` (e.g. `{Feature}UseCaseRegistration.Add{Feature}UseCases()`), then call that extension from `AddCoreServices`.
+- Most services are `AddScoped`. **`IDbExecutor`** and **options objects** are typically **`AddSingleton`** (see existing registrations).
+
+## New features
+
+Use `.cursor/rules/new-feature-workflow.mdc` as the checklist when adding endpoints or capabilities (controller → core → data → DI → tests).

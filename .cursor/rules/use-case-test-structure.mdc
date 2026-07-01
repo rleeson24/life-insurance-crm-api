@@ -1,0 +1,85 @@
+---
+description: Use case unit test structure, mocking, and scenario pattern (required for *UseCaseTests.cs)
+globs: "**/*UseCaseTests.cs", "**/LifeInsuranceCRM.Core.Tests/UseCases/**/*.cs"
+alwaysApply: false
+---
+
+# Use Case Test Structure
+
+**Required** when writing or refactoring use case unit tests (async subjects). For **sync** subjects (mappers, managers), see `test-base-sync-test-structure.mdc`.
+
+## New Use Case Test
+
+When adding a **new** use case test class:
+
+1. **Name and location**: Create `{UseCaseName}UseCaseTests.cs` under `LifeInsuranceCRM.Core.Tests/UseCases/{FeatureFolder}/`. Namespace: `LifeInsuranceCRM.Core.Tests.UseCases.{FeatureFolder}`.
+2. **Start from a reference**: When another test exists in the same feature folder, copy its structure and adapt for your use case and dependencies. Otherwise follow the scenario pattern below.
+3. **Follow this rule**: Use the scenario pattern below, one logical assertion per test, and concrete values in Setups/Verifies.
+
+## Class and Namespace
+
+- **Test class**: `{Name}UseCaseTests` inheriting from `UseCaseTestBase<{Name}UseCase>`.
+- **Namespace**: Mirror production: `LifeInsuranceCRM.Core.Tests.UseCases.{FeatureFolder}`.
+- **Top of class**: One **property** per mocked dependency using `MockFor<T>()`, with **underscore-prefixed** name (e.g. `private Mock<I{Entity}Repository> _repository => MockFor<I{Entity}Repository>();`).
+
+## Scenario-Based Nested Classes (Required)
+
+Use **two nested classes per scenario**:
+
+1. **Setup class** `{Scenario}_Setup` (e.g. `Success_Setup`, `RepositoryReturnsNull_Setup`)
+   - Inherits from the main test class.
+   - **Constructor only**: Configure Setups for that scenario (repository/service returns, ThrowsAsync, etc.). No `[Fact]` methods.
+
+2. **Test class** `{Scenario}` (e.g. `Success`, `RepositoryReturnsNull`)
+   - Implements `IClassFixture<{Scenario}_Setup>`, constructor receives the Setup instance and stores as `private readonly {Scenario}_Setup _fixture;`.
+   - **`[Fact]` methods**: Call Execute (if not done in Setup) and make **one logical assertion per test** (e.g. one method asserts Status, another asserts Result, another Verify).
+
+**Scenarios to cover**: Success path; Not found / missing data; Invalid input (e.g. empty GUID); Exception path (dependency throws; assert exception type and same instance).
+
+## Inputs and Default Returns
+
+- **Input variables**: Define as **fields** at class level with defaults from AutoFixture in the **test class constructor** (e.g. `_userId`, `_entityId`, `_ct`, `_inputModel`). Use **readonly** or constants for values that never change.
+- **Manipulate in test**: Override those fields when the scenario requires it (e.g. `_entityId = Guid.Empty`). Use the same fields in the call under test and in Setups.
+- **Default return values**: Define as class-level fields (from AutoFixture or built in the constructor). Use these in `Setup(...)` as return values, together with the real input fields in the Setup expressions.
+- **Exception objects**: Do not instantiate exceptions inline in test methods. Define exceptions as **class-level fields** (e.g. `_expectedException`, `_repositoryException`), set them in the constructor or in the test/scenario constructor, and use the field in both `Setup(...).ThrowsAsync(_expectedException)` and in assertions (e.g. `var ex = await Assert.ThrowsAsync<...>(...); Assert.Same(_expectedException, ex);`). Override the field in a specific test when that test needs a different exception type or message.
+
+## Setups – Only What the Scenario Uses
+
+- For each test (or Setup class), **only Setup the calls that actually occur** in that scenario.
+- Avoid Setups for branches that are not taken.
+- Prefer **per-test Setups**; keep the constructor to shared test data and default return-value fields, not broad mock behavior.
+
+## Prefer Concrete Values in Setups and Verifies
+
+- **Setups**: In mock `Setup(...)`, use **actual input/field values** (e.g. `_userId`, `_ct`, `_inputModel`) so the test documents the exact call. **Do not use It.IsAny** for a parameter when you have that value as a class-level field or constant.
+- **Verifies**: When verifying a call was made (e.g. `Verify(..., Times.Once)`), use the **same concrete values** so the assertion matches the real invocation.
+- **When to use It.IsAny**:
+  - **Times.Never**: Use It.IsAny when asserting a method was never called (see "Verify with Times.Never" below).
+  - **No value available**: Use It.IsAny only when the use case builds the value internally and you cannot obtain it (e.g. serialized JSON, derived status).
+- If a dependency takes a parameter you don't yet have as a field (e.g. `CancellationToken`), **add a field** (e.g. `_ct`), set it in the constructor or the scenario constructor, and use it in both the Execute call and the Setup/Verify instead of `It.IsAny<CancellationToken>()`.
+
+## DTOs and Result Objects
+
+- When the test only needs a reference or “some instance” (e.g. `Assert.Same` or “mapped result not null”), create DTOs with **AutoFixture** (`Fixture.Create<T>()`, `Fixture.CreateMany<T>().ToList()`) instead of manually setting every property.
+
+## Verify with Times.Never
+
+- **Usually**: Use **It.IsAny** when verifying a method was **never called** (e.g. `Repository.Verify(r => r.Get(It.IsAny<Guid>()), Times.Never)`). This is the exception to "Prefer Concrete Values" above.
+- **Exception**: When the method may be called with some values but must **never** be called with a **specific** value, **Verify with that exact forbidden value** and `Times.Never`.
+
+## Conventions
+
+- **Input consistency**: Use the same input constants/fields across scenarios so behavior differences come from setup, not magic values in test methods.
+- **Single logical assertion**: Prefer one logical assertion per test method.
+- **Exception tests**: Assert the expected exception type and, if relevant, the same instance (e.g. `Assert.IsType<...>(result)`).
+- Optional: Short flow comment per test (e.g. “Early return; no dependencies called”).
+- Use `ProcessRequest<T>.From(payload, ct)` (or equivalent) when the use case takes a `ProcessRequest`; pass the same `_ct` and payload fields used in Setups.
+
+## Executing the Use Case Once per Scenario
+
+- **Execute in `_Setup` only**: For each scenario, override `ExecuteTestMethodAsync` in the `{Scenario}_Setup` class and invoke `SubjectUnderTest.Execute(...)` there **once per scenario** using the shared input fields.
+- **Store results on the fixture**: Capture the returned `ProcessResponse<T>` (or other result) in an **instance field on the base test class** (e.g. `_result`) and, for exception scenarios, capture the thrown exception in a separate field (e.g. `_thrownException`) by wrapping the call in a try/catch.
+- **Facts only assert/verify**: `[Fact]` methods in the `{Scenario}` class should **never call `SubjectUnderTest.Execute` directly**; they should only:
+  - Assert against the stored result/exception fields on the fixture, and/or
+  - Perform mock `Verify(...)` calls.
+- **Goal**: This ensures the use case under test is not executed multiple times for the same scenario (xUnit fixture instance), avoiding duplicated side effects and making tests deterministic.

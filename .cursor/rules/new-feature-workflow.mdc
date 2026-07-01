@@ -1,0 +1,18 @@
+---
+description: Step-by-step checklist for new endpoints, use cases, persistence, and tests
+alwaysApply: true
+---
+
+# New feature / endpoint checklist
+
+Use this order so new work stays consistent with the solution. Details: `.cursor/rules/codebase-architecture-style.mdc`.
+
+1. **Core use case** – Add `I…UseCase` + implementation in **one file** under `LifeInsuranceCRM.Core/UseCases/{Area}/`. Return `ProcessResponse<T>`. Use `IActorTracker` for the authenticated user; do not thread “current user id” from controllers for normal caller-scoped operations.
+2. **Models** – HTTP-oriented payloads: `Models.Requests.*Request`. Domain/body shapes: `Models.Input`. API responses from use cases: `Models.Output.*`.
+3. **Persistence (if needed)** – Add `I…Repository` in `Core.Abstractions.Data`, implement in `Data.Repositories` with **`IDbExecutor`** + parameterized SQL. Register in `Data.DependencyInjectionExtensions.AddDataServices`.
+4. **External services (if needed)** – Contract in `Core.Abstractions.Providers` or `Abstractions.Emails`; implementation in `Providers` / `Emails`; register in `Program.cs` (or existing provider DI), not inside use cases via `IConfiguration`.
+5. **Core DI** – Register the use case (and any new Core mapper) in the feature’s `*UseCaseRegistration.cs` under `UseCases/{Area}/`; ensure `AddCoreServices` calls that extension.
+6. **API** – Add action on a thin controller: `[ApiController]` / `[Route]`, `[Authorize]` / `[AllowAnonymous]` as appropriate, `[FromServices]` for the use case, `CancellationToken` on actions that pass it through. Return `response.ToActionResult(…)`; use `ToActionResult(this, …)` when error responses should include request path / trace (see `ProcessResponseExtensions`).
+7. **Tests** – Use case: `.cursor/rules/use-case-test-structure.mdc`. Mappers / sync helpers: `.cursor/rules/test-base-sync-test-structure.mdc`. Consider API tests in `LifeInsuranceCRM.API.Tests` for critical HTTP behavior.
+
+**Do not** put business rules, ownership checks, or orchestration in controllers—only in use cases (and below).

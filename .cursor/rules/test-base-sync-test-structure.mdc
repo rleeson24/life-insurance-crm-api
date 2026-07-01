@@ -1,0 +1,61 @@
+---
+description: Sync unit test structure for TestBase (mappers, managers, other non-async code). Same structure as use case tests but with constructor-based lifecycle.
+globs: "**/Mappers/*Tests.cs", "**/Managers/*Tests.cs"
+alwaysApply: false
+---
+
+# TestBase (Sync) Test Structure
+
+Apply when writing or refactoring unit tests for code that has **no async methods** (mappers, managers, factories, etc.). These inherit from `TestBase<TSubject>` and use a **synchronous** lifecycle: configure mocks and data in the **constructor**, then call `BuildSubject()` and optionally `PostSetup()`.
+
+## When to Use TestBase vs UseCaseTestBase
+
+- **TestBase&lt;TSubject&gt;** – Subject under test has no async API. No `IAsyncLifetime`; configure mocks and data in the constructor, then call `BuildSubject()` and `PostSetup()`.
+- **UseCaseTestBase&lt;TSubject&gt;** – Subject has async methods (e.g. `Execute`). Uses `InitializeAsync` / `DisposeAsync`; configure mocks and test data in the constructor (runs before `InitializeAsync`).
+
+## Class and Namespace
+
+- **Test class**: `{Name}Tests` inheriting from `TestBase<{SubjectType}>` (e.g. `{Entity}MapperTests : TestBase<{Entity}Mapper>`).
+- **Namespace**: Mirror production (e.g. `LifeInsuranceCRM.Core.Tests.Mappers`, `LifeInsuranceCRM.Core.Tests.Managers`).
+- **Top of class**: One property per mocked dependency using `MockFor<T>()` (e.g. `private Mock<INowProvider> NowProvider => MockFor<INowProvider>();`). Omit if the subject has no dependencies.
+
+## Constructor and Lifecycle
+
+- **Constructor**: Configure mocks and test data (if any), then call `BuildSubject(); PostSetup();` so the subject and any one-time results are ready before tests run.
+- **BuildSubject()**: Builds the subject from mocks/dependencies. The constructor calls it after any mock/data setup.
+- **PostSetup()**: Override to run **once after** the subject is built (e.g. call the mapper once and store the result in a field for property-based `[Fact]` methods). Optional if tests call the subject directly in each test.
+
+## Nested Classes (Same as Use Case Tests)
+
+- Use **nested classes** to group related facts (e.g. `Create`, `Update`, `DbToOutput` for mappers; `Generate` for a generator).
+- Nested class inherits from the outer test class (e.g. `public class Create : {Entity}MapperTests`).
+- When a nested class overrides `PostSetup()`, only that nested class's tests get that setup (virtual dispatch from base constructor).
+
+## Inputs and Default Returns
+
+- **Input variables**: Define as **fields** or **static readonly** at class level. Set in the constructor or use constants.
+- **Default return values**: Class-level fields used in `Setup(...)` and in assertions. Use **Fixture** for anonymous data where “any value” is enough.
+- **Exception objects**: Class-level fields (e.g. `_expectedException`), set in the constructor or in the test, used in `Setup(...).Throws(_expectedException)` and `Assert.Throws<...>(() => ...); Assert.Same(_expectedException, ex);`.
+
+## Setups – Only What the Scenario Uses
+
+- For each test (or nested class), **only Setup the calls that actually occur** in that scenario.
+- Prefer **per-test or per-nested-class Setups**; keep the constructor to shared test data and default return-value fields, not broad mock behavior.
+
+## Prefer Concrete Values in Setups and Verifies
+
+- Use **actual input/field values** in `Setup(...)` and `Verify(...)` instead of `It.IsAny` when you have that value.
+- Use **It.IsAny** when asserting a method was **never** called: `Verify(..., Times.Never)`.
+
+## Mapper-Style Tests (One Call, Many Property Assertions)
+
+- In **PostSetup()**: Call the subject once (e.g. `_createResult = SubjectUnderTest.Create(...);`) and store the result in a field.
+- **`[Fact]` methods**: Assert one or a few properties each (e.g. `Name_IsMapped() => Assert.Equal("Alice", _createResult.Name);`).
+- Keeps tests small and names document the mapped field.
+
+## Conventions
+
+- **SubjectUnderTest**: Use for the instance under test; built by `BuildSubject()` (or on first access if not using constructor flow).
+- **Single logical assertion**: Prefer one logical assertion per test method.
+- **Exception tests**: Use `Assert.Throws<T>(() => SubjectUnderTest.SomeMethod(...))` and, if relevant, assert the same exception instance.
+- **No async**: Do not use `async`/`await` or `Task` in test methods or setup for TestBase-derived classes; use the sync overloads of the subject and mocks.

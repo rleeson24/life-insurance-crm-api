@@ -1,0 +1,24 @@
+---
+description: ASP.NET Core controller conventions — routing, DI, ProcessResponse mapping
+globs: "**/LifeInsuranceCRM.API/Controllers/**/*.cs"
+alwaysApply: false
+---
+
+# API controllers (LifeInsuranceCRM.API)
+
+## Role
+
+Controllers translate HTTP to use case calls and map `ProcessResponse<T>` to `IActionResult`. **No business logic** (validation that belongs in Core, authorization decisions beyond attributes, orchestration).
+
+## Conventions
+
+- Prefer `[ApiController]` and explicit `[Route("api/…")]` (kebab or resource style; keep routes consistent within the project).
+- Inject the use case with **`[FromServices] I…UseCase`** on the action unless the controller already holds a single injected dependency for all actions (constructor injection for one use case per controller is also fine—match the surrounding file).
+- Include **`CancellationToken cancellationToken`** on actions that forward cancellation to `Execute` or `IProcessRequestFactory.Create(…, cancellationToken)`.
+- After `await useCase.Execute(…)`, return **`response.ToActionResult(onSuccess)`**. Use **`response.ToActionResult(this, onSuccess)`** when non-success paths should populate **Instance** and **TraceId** on `ProblemDetailsDto` (see `LifeInsuranceCRM.API.Utilities.ProcessResponseExtensions`).
+- Success: typically `Ok(…)`, `CreatedAtAction(…)`, `File(…)`, or `Ok()` for void-like results. Branch on `UseCaseStatus` from the response rather than treating a null `Result` as success.
+- **`GlobalUsings`**: `LifeInsuranceCRM.API` imports `LifeInsuranceCRM.API.Utilities` so `ToActionResult` resolves without per-file usings in many cases.
+
+## Auth
+
+Use `[Authorize]`, `[AllowAnonymous]`, and policy attributes as appropriate. Do not re-implement JWT parsing in the controller; Core uses `IActorTracker` after auth middleware/filters run.
