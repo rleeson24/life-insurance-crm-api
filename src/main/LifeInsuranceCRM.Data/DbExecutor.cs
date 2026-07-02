@@ -68,7 +68,12 @@ public sealed class DbExecutor : IDbExecutor
     {
         var command = connection.CreateCommand();
         command.CommandText = sql;
-        command.Parameters.AddRange(parameters);
+        if (parameters.Length > 0)
+        {
+            command.Parameters.AddRange(
+                parameters.Select(static p => new SqlParameter(p.ParameterName, p.Value)).ToArray());
+        }
+
         return command;
     }
 }

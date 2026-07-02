@@ -1,0 +1,70 @@
+using LifeInsuranceCRM.Core.Abstractions.Auth;
+using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Mappers;
+using LifeInsuranceCRM.Core.Models.Input;
+using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Utilities;
+
+namespace LifeInsuranceCRM.Core.UseCases.Clients;
+
+public interface ICreateClientUseCase
+{
+    Task<ProcessResponse<ClientDto>> Execute(ProcessRequest<CreateClientModel> request);
+}
+
+public sealed class CreateClientUseCase : ICreateClientUseCase
+{
+    private readonly IActorTracker _actorTracker;
+    private readonly INowProvider _nowProvider;
+    private readonly IClientRepository _clientRepository;
+    private readonly IClientMapper _clientMapper;
+    private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+
+    public CreateClientUseCase(
+        IActorTracker actorTracker,
+        INowProvider nowProvider,
+        IClientRepository clientRepository,
+        IClientMapper clientMapper,
+        IClientUseCaseHelpers clientUseCaseHelpers)
+    {
+        _actorTracker = actorTracker;
+        _nowProvider = nowProvider;
+        _clientRepository = clientRepository;
+        _clientMapper = clientMapper;
+        _clientUseCaseHelpers = clientUseCaseHelpers;
+    }
+
+    public async Task<ProcessResponse<ClientDto>> Execute(ProcessRequest<CreateClientModel> request)
+    {
+        var validation = _clientUseCaseHelpers.ValidateActor(_actorTracker);
+        if (validation.IsFailed(out ProcessResponse<ClientDto> failure))
+        {
+            return failure;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Payload.FirstName))
+        {
+            return ProcessResponse<ClientDto>.InvalidRequestResponse(
+                "First name is required",
+                ClientErrorCodes.FirstNameRequired);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Payload.LastName))
+        {
+            return ProcessResponse<ClientDto>.InvalidRequestResponse(
+                "Last name is required",
+                ClientErrorCodes.LastNameRequired);
+        }
+
+        var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);
+        var client = await _clientRepository.InsertAsync(
+            request.Payload,
+            _actorTracker.TenantId!.Value,
+            audit,
+            request.CancellationToken);
+
+        return ProcessResponse<ClientDto>.Succeeded(_clientMapper.ToDto(client));
+    }
+}

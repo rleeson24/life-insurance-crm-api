@@ -16,6 +16,7 @@ builder.AddServiceDefaults();
 
 AddConfigurationOptions(builder);
 AddWebApi(builder);
+AddDevelopmentCors(builder);
 AddAuthentication(builder);
 AddRateLimitingPolicies(builder);
 builder.Services.AddDataServices();
@@ -27,6 +28,7 @@ MapHealthEndpoints(app);
 MapAspireDefaults(app);
 UseDevelopmentOpenApi(app);
 UseGlobalExceptionHandler(app);
+UseDevelopmentCors(app);
 UseHttps(app);
 UseRateLimiter(app);
 UseAuthentication(app);
@@ -93,6 +95,31 @@ void AddAuthentication(WebApplicationBuilder webBuilder)
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddMicrosoftIdentityWebApi(webBuilder.Configuration.GetSection("AzureAd"));
         webBuilder.Services.AddAuthorization();
+    }
+}
+
+void AddDevelopmentCors(WebApplicationBuilder webBuilder)
+{
+    if (!webBuilder.Environment.IsDevelopment())
+    {
+        return;
+    }
+
+    webBuilder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+            policy.SetIsOriginAllowed(_ => true)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials());
+    });
+}
+
+void UseDevelopmentCors(WebApplication webApp)
+{
+    if (webApp.Environment.IsDevelopment())
+    {
+        webApp.UseCors();
     }
 }
 

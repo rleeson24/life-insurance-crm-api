@@ -4,7 +4,7 @@
 
 @main_HostAddress = http://localhost:5069
 
-### Health — readiness (self + SQL when configured)
+### Health — readiness
 GET {{main_HostAddress}}/health
 Accept: application/json
 
@@ -16,8 +16,62 @@ Accept: application/json
 GET {{main_HostAddress}}/api/status
 Accept: application/json
 
-### Status — authenticated (dev auth auto-signs in when Auth:UseDevelopmentAuthentication is true)
+### Status — authenticated
 GET {{main_HostAddress}}/api/status/authenticated
+Accept: application/json
+
+### List clients
+GET {{main_HostAddress}}/api/clients?page=1&pageSize=25
+Accept: application/json
+
+### Search clients
+GET {{main_HostAddress}}/api/clients?search=Jane&isActive=true
+Accept: application/json
+
+### Get client
+GET {{main_HostAddress}}/api/clients/33333333-3333-3333-3333-333333333333
+Accept: application/json
+
+### Get client detail (profile shell)
+GET {{main_HostAddress}}/api/clients/33333333-3333-3333-3333-333333333333/detail
+Accept: application/json
+
+### Create client
+POST {{main_HostAddress}}/api/clients
+Content-Type: application/json
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "isActive": true
+}
+
+### Update client
+PUT {{main_HostAddress}}/api/clients/33333333-3333-3333-3333-333333333333
+Content-Type: application/json
+
+{
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "isActive": true,
+  "isAcaClient": false,
+  "hasContactConsent": true
+}
+
+### Patch client status
+PATCH {{main_HostAddress}}/api/clients/33333333-3333-3333-3333-333333333333
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+### List interactions
+GET {{main_HostAddress}}/api/clients/33333333-3333-3333-3333-333333333333/interactions
+Accept: application/json
+
+### List follow-ups
+GET {{main_HostAddress}}/api/follow-ups
 Accept: application/json
 
 ### OpenAPI document (Development only)

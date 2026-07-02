@@ -5,8 +5,15 @@ var sql = builder.AddSqlServer("sql")
 
 var database = sql.AddDatabase("LifeInsuranceCRM");
 
-builder.AddProject<Projects.LifeInsuranceCRM_API>("lifeinsurancecrm-api")
+var api = builder.AddProject<Projects.LifeInsuranceCRM_API>("lifeinsurancecrm-api")
     .WithReference(database)
-    .WaitFor(database);
+    .WaitFor(database)
+    .WithExternalHttpEndpoints();
+
+builder.AddViteApp("lifeinsurancecrm-client", "../../../../life-insurance-crm-client/src")
+    .WithReference(api)
+    .WithEnvironment("VITE_API_BASE_URL", api.GetEndpoint("http"))
+    .WithExternalHttpEndpoints()
+    .WaitFor(api);
 
 builder.Build().Run();

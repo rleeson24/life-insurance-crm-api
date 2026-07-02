@@ -31,4 +31,16 @@ public sealed class ProcessResponse<T>
 
     public ProcessResponse<TTarget> MapResult<TTarget>() =>
         new(Status, default, Message, ErrorCode);
+
+    public bool IsFailed<TTarget>(out ProcessResponse<TTarget> failureResponse)
+    {
+        if (IsSuccess)
+        {
+            failureResponse = default!;
+            return false;
+        }
+
+        failureResponse = MapResult<TTarget>();
+        return true;
+    }
 }
