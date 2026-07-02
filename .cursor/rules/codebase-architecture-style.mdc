@@ -15,7 +15,7 @@ src/
 │   ├── LifeInsuranceCRM.Data/      # Repositories, SQL, persistence mappers
 │   ├── LifeInsuranceCRM.Providers/  # External API integrations
 │   ├── LifeInsuranceCRM.Emails/    # Email sending
-│   └── LifeInsuranceCRM.Utilities/ # Shared utilities (EtmException, UseCaseStatus)
+│   └── LifeInsuranceCRM.Utilities/ # Shared utilities (CrmException, UseCaseStatus, ProcessRequest)
 ├── LifeInsuranceCRM.Core.Tests/
 ├── LifeInsuranceCRM.API.Tests/
 └── LifeInsuranceCRM.Tests.Utilities/  # TestBase, UseCaseTestBase, FixtureExtensions
@@ -35,16 +35,15 @@ src/
 - Use case + interface **in same file** (e.g. `Create{Entity}UseCase` and `ICreate{Entity}UseCase`). File name: `{Action}{Entity}UseCase.cs` (not separate `I*.cs` files).
 - `Execute` returns `Task<ProcessResponse<T>>`. Use `UseCaseStatus` for status (Success, NotFound, InvalidRequest, Failure, Unauthorized, Forbidden, Conflict). Prefer `ProcessResponse<T>.Succeeded(result)` and `ProcessResponse<T>.WithStatus(status, message, errorCode)`; use `ProcessResponse<T>.InvalidRequestResponse` when appropriate.
 - **Never use `null` as a success/failure signal.** Validators, gates, and use cases must always return `ProcessResponse<T>` (not `ProcessResponse<T>?`). Check `Status == UseCaseStatus.Success` (or `!= Success`) — do not return `null` to mean “validation passed” or treat a null return as not found. On failure, `Result` may be `default`; callers must branch on `Status`. Propagate failures with `validation.MapResult<TTarget>()`.
-- **Execute signatures**: either explicit parameters (common) or `ProcessRequest<TPayload>` when bundling a request DTO with `CancellationToken`. Controllers often use `IProcessRequestFactory.Create(new SomeRequest(...), cancellationToken)`; inside Core, `ProcessRequest<T>.From(payload, ct)` is also used (e.g. tests).
-- Controllers: do not resolve the current user in the controller. The authenticated user is available in Core via `IActorTracker`, populated per request by auth middleware/filters. Inject use cases via `[FromServices]`; map results with `ProcessResponseExtensions.ToActionResult` (see `LifeInsuranceCRM.API.Utilities`).
+- **Execute signatures**: `Task<ProcessResponse<T>> Execute(ProcessRequest<TPayload> request)` — one generic `ProcessRequest<T>` wrapper per use case payload; controllers use `IProcessRequestFactory.Create(payload, cancellationToken)`.
+- Controllers: do not resolve the current user in the controller. The authenticated user is available in Core via `IActorTracker`, populated per request by auth middleware/filters. Inject use cases via `[FromServices]`; map results with `IProcessResponseActionMapper` via `ApiControllerBase.FromUseCase`.
 
 ```csharp
-// Controller
-var response = await useCase.Execute(model, cancellationToken);
-return response.ToActionResult(r => Ok(r));
+// Controller (ApiControllerBase)
+return await FromUseCase(useCase.Execute(processRequestFactory.Create(request, cancellationToken)));
 
 // Use case (current user from actor)
-public async Task<ProcessResponse<{Entity}>> Execute(Create{Entity}Model model, CancellationToken ct = default)
+public async Task<ProcessResponse<{Entity}>> Execute(ProcessRequest<Create{Entity}Model> request)
 
 // Validator / gate — always return ProcessResponse; never null for “valid”
 public ProcessResponse<{ValidatedInput}> Validate(Guid entityId, Create{Entity}Dto dto)
@@ -96,7 +95,7 @@ public interface I{Entity}Service
 
 ## Error Handling
 
-- Domain errors: throw `EtmException` with `UseCaseStatus`. `GlobalExceptionHandler` maps to HTTP status and `ProblemDetailsDto`.
+- Domain errors: throw `CrmException` with `UseCaseStatus`. `GlobalExceptionHandler` maps to HTTP status and `ProblemDetailsDto`.
 - Use `ProcessResponse` for expected failures (invalid input, not found); do not throw for normal flow.
 
 ### Database + blob / external store (no shared transaction)
@@ -119,6 +118,13 @@ HTTP use cases return `ProcessResponse<T>` + `UseCaseStatus`. **Queue orchestrat
 Worker-specific DI entry points should register only the worker subgraph. The full API uses `AddCoreServices()`.
 
 Unexpected worker failures may still throw; the function trigger handles retries/dead-letter. Expected outcomes (skip, unsupported version) use the orchestrator status enum—not `ProcessResponse`.
+
+## Date and time (UTC storage)
+
+- **Instants** (audit columns, `ContactedAt`, `RecordedAt`, security events): store **UTC only**. SQL: `datetimeoffset(7)` with `SYSUTCDATETIME()` defaults; C#: `DateTimeOffset` from **`INowProvider.UtcNow`** (never `DateTime.Now` or unspecified `DateTime`).
+- **Calendar dates** (DOB, Medicare effective dates, coverage start): SQL `date` / C# `DateOnly` — no time zone conversion.
+- **API**: return instants as ISO 8601 UTC (`…Z`). Do not accept client-local offsets for persistence; if the UI captures “local contact time”, convert to UTC before the use case writes.
+- **UI** (Phase 1+): display local time from UTC; never send local offsets to persist unless explicitly converted server-side.
 
 ## Naming & Style
 

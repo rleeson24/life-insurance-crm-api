@@ -13,11 +13,12 @@ Controllers translate HTTP to use case calls and map `ProcessResponse<T>` to `IA
 ## Conventions
 
 - Prefer `[ApiController]` and explicit `[Route("api/…")]` (kebab or resource style; keep routes consistent within the project).
-- Inject the use case with **`[FromServices] I…UseCase`** on the action unless the controller already holds a single injected dependency for all actions (constructor injection for one use case per controller is also fine—match the surrounding file).
-- Include **`CancellationToken cancellationToken`** on actions that forward cancellation to `Execute` or `IProcessRequestFactory.Create(…, cancellationToken)`.
-- After `await useCase.Execute(…)`, return **`response.ToActionResult(onSuccess)`**. Use **`response.ToActionResult(this, onSuccess)`** when non-success paths should populate **Instance** and **TraceId** on `ProblemDetailsDto` (see `LifeInsuranceCRM.API.Utilities.ProcessResponseExtensions`).
-- Success: typically `Ok(…)`, `CreatedAtAction(…)`, `File(…)`, or `Ok()` for void-like results. Branch on `UseCaseStatus` from the response rather than treating a null `Result` as success.
-- **`GlobalUsings`**: `LifeInsuranceCRM.API` imports `LifeInsuranceCRM.API.Utilities` so `ToActionResult` resolves without per-file usings in many cases.
+- Controllers inherit **`ApiControllerBase`** and inject **`IProcessResponseActionMapper`** (via base constructor).
+- Inject the use case with **`[FromServices] I…UseCase`** on the action unless the controller already holds a single injected dependency for all actions.
+- Include **`CancellationToken cancellationToken`** on actions; build **`ProcessRequest<T>`** via **`IProcessRequestFactory.Create(payload, cancellationToken)`**.
+- Return **`FromUseCase(useCase.Execute(processRequest))`**; pass a success lambda only for `CreatedAtAction` / `NoContent` responses.
+- Success: branch on `ProcessResponse.Status`, not null `Result`.
+- **`GlobalUsings`**: import `LifeInsuranceCRM.API.Services` as needed.
 
 ## Auth
 

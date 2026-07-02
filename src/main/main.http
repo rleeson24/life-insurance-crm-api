@@ -1,6 +1,25 @@
+# LifeInsuranceCRM.API — local requests
+# Standalone: dotnet run --project main/LifeInsuranceCRM.API.csproj (http profile → port 5069)
+# Aspire: use the API endpoint URL from the Aspire dashboard (port varies)
+
 @main_HostAddress = http://localhost:5069
 
-GET {{main_HostAddress}}/weatherforecast/
+### Health — readiness (self + SQL when configured)
+GET {{main_HostAddress}}/health
 Accept: application/json
 
-###
+### Health — liveness
+GET {{main_HostAddress}}/alive
+Accept: application/json
+
+### Status — anonymous
+GET {{main_HostAddress}}/api/status
+Accept: application/json
+
+### Status — authenticated (dev auth auto-signs in when Auth:UseDevelopmentAuthentication is true)
+GET {{main_HostAddress}}/api/status/authenticated
+Accept: application/json
+
+### OpenAPI document (Development only)
+GET {{main_HostAddress}}/openapi/v1.json
+Accept: application/json

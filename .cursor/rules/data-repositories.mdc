@@ -14,6 +14,7 @@ Implement **`Core.Abstractions.Data`** repository interfaces. **No business rule
 
 - Inject **`IDbExecutor`** and use its async methods (`ExecuteReader`, `ExecuteNonQuery`, etc.) with **parameterized** `SqlParameter` values (or existing helpers such as **`ISqlParameterUtility`**).
 - Do **not** introduce Entity Framework Core `DbContext` for this solution's main persistence path.
+- **`datetimeoffset` columns are UTC-only**: pass `DateTimeOffset` values with offset `+00:00` (from `INowProvider` or `.UtcNow`). Calendar fields use SQL `date` / `DateOnly`.
 
 ## Mappers
 

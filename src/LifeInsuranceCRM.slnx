@@ -1,5 +1,15 @@
 <Solution>
-  <Project Path="main/LifeInsuranceCRM.API.csproj" />
+  <Folder Name="/main/">
+    <Project Path="main/LifeInsuranceCRM.API.csproj" />
+    <Project Path="main/LifeInsuranceCRM.Core/LifeInsuranceCRM.Core.csproj" />
+    <Project Path="main/LifeInsuranceCRM.Data/LifeInsuranceCRM.Data.csproj" />
+    <Project Path="main/LifeInsuranceCRM.Utilities/LifeInsuranceCRM.Utilities.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="LifeInsuranceCRM.API.Tests/LifeInsuranceCRM.API.Tests.csproj" />
+    <Project Path="LifeInsuranceCRM.Core.Tests/LifeInsuranceCRM.Core.Tests.csproj" />
+    <Project Path="LifeInsuranceCRM.Tests.Utilities/LifeInsuranceCRM.Tests.Utilities.csproj" />
+  </Folder>
   <Project Path="orchestration/LifeInsuranceCRM.AppHost/LifeInsuranceCRM.AppHost.csproj" Id="a4c68e87-b34d-40d3-9d36-81129ba17b46" />
   <Project Path="orchestration/LifeInsuranceCRM.ServiceDefaults/LifeInsuranceCRM.ServiceDefaults.csproj" />
 </Solution>
