@@ -12,9 +12,9 @@ Run in order against the target database:
 1. `live/001_Tenants.sql` through `live/008_RLS.sql`
 2. Optional dev seed: `live/seed/001_DevelopmentTenant.sql`
 
-**Aspire:** Start `LifeInsuranceCRM.AppHost` (not the API project alone). Aspire injects `ConnectionStrings:LifeInsuranceCRM` pointing at the SQL container; the API prefers that over `Database:ConnectionString`.
+**Aspire:** Start `LifeInsuranceCRM.AppHost` (not the API project alone). Aspire injects `ConnectionStrings:LifeInsuranceCRM` pointing at the SQL container; the API prefers that over `Database:ConnectionString`. On first database creation, AppHost runs the live schema scripts automatically via `WithCreationScript` (same order as below, including dev seed).
 
-**Standalone API:** Run SQL locally on port 1433 and set `Database:ConnectionString` in `appsettings.Development.json`, or apply scripts against your instance.
+**Standalone API:** Run SQL locally on port 1433 and set `Database:ConnectionString` in `appsettings.Development.json`, or apply scripts against your instance with `apply-live-schema.cmd`.
 
 ## Constants
 
