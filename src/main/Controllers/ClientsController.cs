@@ -74,4 +74,16 @@ public sealed class ClientsController : ApiControllerBase
         [FromServices] IUpdateClientStatusUseCase useCase,
         CancellationToken cancellationToken) =>
         FromUseCase(useCase.Execute(_processRequestFactory.Create(model with { ClientId = clientId }, cancellationToken)));
+
+    [HttpDelete("{clientId:guid}")]
+    public Task<IActionResult> Delete(
+        Guid clientId,
+        [FromServices] IDeleteClientUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var request = new DeleteClientRequest { ClientId = clientId };
+        return FromUseCase(
+            useCase.Execute(_processRequestFactory.Create(request, cancellationToken)),
+            _ => NoContent());
+    }
 }

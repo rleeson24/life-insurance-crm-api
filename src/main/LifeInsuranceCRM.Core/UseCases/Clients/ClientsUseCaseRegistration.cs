@@ -12,6 +12,7 @@ public static class ClientsUseCaseRegistration
         services.AddScoped<ICreateClientUseCase, CreateClientUseCase>();
         services.AddScoped<IUpdateClientUseCase, UpdateClientUseCase>();
         services.AddScoped<IUpdateClientStatusUseCase, UpdateClientStatusUseCase>();
+        services.AddScoped<IDeleteClientUseCase, DeleteClientUseCase>();
         services.AddScoped<IListClientInteractionsUseCase, ListClientInteractionsUseCase>();
         services.AddScoped<ICreateClientInteractionUseCase, CreateClientInteractionUseCase>();
         services.AddScoped<IUpdateClientInteractionUseCase, UpdateClientInteractionUseCase>();

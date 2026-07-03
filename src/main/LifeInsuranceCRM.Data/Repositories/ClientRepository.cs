@@ -236,6 +236,30 @@ public sealed class ClientRepository : IClientRepository
         return await GetByIdAsync(model.ClientId, cancellationToken);
     }
 
+    public async Task<bool> SoftDeleteAsync(
+        Guid clientId,
+        AuditStamp audit,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE dbo.Clients SET
+                IsDeleted = 1, DeletedAt = @DeletedAt, DeletedByUserId = @DeletedByUserId,
+                UpdatedAt = @UpdatedAt, UpdatedByUserId = @UpdatedByUserId
+            WHERE ClientId = @ClientId AND IsDeleted = 0;
+            """;
+
+        var rows = await _dbExecutor.ExecuteNonQueryAsync(
+            sql,
+            cancellationToken,
+            new SqlParameter("@ClientId", clientId),
+            new SqlParameter("@DeletedAt", audit.Timestamp),
+            new SqlParameter("@DeletedByUserId", audit.UserId),
+            new SqlParameter("@UpdatedAt", audit.Timestamp),
+            new SqlParameter("@UpdatedByUserId", audit.UserId));
+
+        return rows > 0;
+    }
+
     private static Client ReadClient(SqlDataReader reader) => new()
     {
         ClientId = reader.GetGuid("ClientId"),

@@ -17,4 +17,6 @@ public interface IClientRepository
     Task<Client?> UpdateAsync(UpdateClientModel model, AuditStamp audit, CancellationToken cancellationToken = default);
 
     Task<Client?> UpdateStatusAsync(UpdateClientStatusModel model, AuditStamp audit, CancellationToken cancellationToken = default);
+
+    Task<bool> SoftDeleteAsync(Guid clientId, AuditStamp audit, CancellationToken cancellationToken = default);
 }
