@@ -8,7 +8,7 @@ public static class DependencyInjectionExtensions
 {
     public static IServiceCollection AddDataServices(this IServiceCollection services)
     {
-        services.AddSingleton<IDbExecutor, DbExecutor>();
+        services.AddScoped<IDbExecutor, DbExecutor>();
         services.AddScoped<IAuthSecurityEventRepository, AuthSecurityEventRepository>();
         services.AddScoped<IOrganizationUserRepository, OrganizationUserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();

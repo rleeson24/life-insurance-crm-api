@@ -34,7 +34,6 @@ UseRateLimiter(app);
 UseAuthentication(app);
 UseAuthorization(app);
 UseActorResolution(app);
-UseTenantSessionContext(app);
 UseAuthChallengeRecording(app);
 MapControllers(app);
 
@@ -157,9 +156,6 @@ void UseAuthorization(WebApplication webApp) => webApp.UseAuthorization();
 
 void UseActorResolution(WebApplication webApp) =>
     webApp.UseMiddleware<ActorResolutionMiddleware>();
-
-void UseTenantSessionContext(WebApplication webApp) =>
-    webApp.UseMiddleware<TenantSessionContextMiddleware>();
 
 void UseAuthChallengeRecording(WebApplication webApp) =>
     webApp.UseMiddleware<AuthChallengeRecordingMiddleware>();

@@ -19,6 +19,4 @@ public interface IDbExecutor
         Func<SqlDataReader, CancellationToken, Task> read,
         CancellationToken cancellationToken = default,
         params SqlParameter[] parameters);
-
-    Task SetTenantSessionContextAsync(Guid tenantId, CancellationToken cancellationToken = default);
 }
