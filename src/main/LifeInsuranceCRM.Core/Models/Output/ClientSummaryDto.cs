@@ -1,4 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace LifeInsuranceCRM.Core.Models.Output;
+
+[ExcludeFromCodeCoverage]
 
 public sealed class ClientSummaryDto
 {

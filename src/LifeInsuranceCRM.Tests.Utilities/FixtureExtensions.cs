@@ -1,5 +1,6 @@
 using AutoFixture;
 using LifeInsuranceCRM.Core.Entities;
+using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using Moq;
 using LifeInsuranceCRM.Core.Abstractions.Auth;
@@ -48,6 +49,60 @@ public static class FixtureExtensions
             .With(c => c.UpdatedByUserId, userId)
             .Create();
 
+    public static ClientInteraction CreateClientInteraction(
+        this Fixture fixture,
+        Guid interactionId,
+        Guid clientId,
+        Guid tenantId,
+        Guid userId,
+        DateTimeOffset timestamp) =>
+        fixture.Build<ClientInteraction>()
+            .With(i => i.ClientInteractionId, interactionId)
+            .With(i => i.ClientId, clientId)
+            .With(i => i.TenantId, tenantId)
+            .With(i => i.CreatedAt, timestamp)
+            .With(i => i.UpdatedAt, timestamp)
+            .With(i => i.CreatedByUserId, userId)
+            .With(i => i.UpdatedByUserId, userId)
+            .Create();
+
+    public static MedicareEnrollment CreateMedicareEnrollment(
+        this Fixture fixture,
+        Guid enrollmentId,
+        Guid clientId,
+        Guid tenantId,
+        Guid userId,
+        DateTimeOffset timestamp) =>
+        fixture.Build<MedicareEnrollment>()
+            .With(e => e.MedicareEnrollmentId, enrollmentId)
+            .With(e => e.ClientId, clientId)
+            .With(e => e.TenantId, tenantId)
+            .With(e => e.CreatedAt, timestamp)
+            .With(e => e.UpdatedAt, timestamp)
+            .With(e => e.CreatedByUserId, userId)
+            .With(e => e.UpdatedByUserId, userId)
+            .Create();
+
+    public static SupplementalEnrollment CreateSupplementalEnrollment(
+        this Fixture fixture,
+        Guid enrollmentId,
+        Guid clientId,
+        Guid tenantId,
+        Guid userId,
+        DateTimeOffset timestamp) =>
+        fixture.Build<SupplementalEnrollment>()
+            .With(e => e.SupplementalEnrollmentId, enrollmentId)
+            .With(e => e.ClientId, clientId)
+            .With(e => e.TenantId, tenantId)
+            .With(e => e.CreatedAt, timestamp)
+            .With(e => e.UpdatedAt, timestamp)
+            .With(e => e.CreatedByUserId, userId)
+            .With(e => e.UpdatedByUserId, userId)
+            .Create();
+
+    public static AuditStamp CreateAuditStamp(this Fixture fixture, Guid userId, DateTimeOffset timestamp) =>
+        new(userId, timestamp);
+
     public static void SetupAuthenticatedActor(
         this Mock<IActorTracker> actorTracker,
         Guid userId,
@@ -56,5 +111,12 @@ public static class FixtureExtensions
         actorTracker.Setup(a => a.IsAuthenticated).Returns(true);
         actorTracker.Setup(a => a.UserId).Returns(userId);
         actorTracker.Setup(a => a.TenantId).Returns(tenantId);
+    }
+
+    public static void SetupUnauthenticatedActor(this Mock<IActorTracker> actorTracker)
+    {
+        actorTracker.Setup(a => a.IsAuthenticated).Returns(false);
+        actorTracker.Setup(a => a.UserId).Returns((Guid?)null);
+        actorTracker.Setup(a => a.TenantId).Returns((Guid?)null);
     }
 }
