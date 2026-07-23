@@ -6,23 +6,53 @@ This repository blocks commits that contain likely secrets (API keys, connection
 
 ### One-time setup
 
+**Windows (recommended):** from the repository root (`life-insurance-crm-api`):
+
+```powershell
+.\scripts\setup-pre-commit.ps1
+```
+
+**Manual setup (all platforms):**
+
 1. Install [pre-commit](https://pre-commit.com/#install) (Python 3.9+):
 
    ```bash
-   pip install pre-commit
+   python -m pip install pre-commit
    ```
 
-2. From the repository root (`life-insurance-crm-api`), install hooks:
+2. Install git hooks from the repository root:
 
    ```bash
-   pre-commit install
+   python -m pre_commit install
    ```
 
-3. Optional: run against all tracked files before your first commit:
+   Use `python -m pre_commit` instead of `pre-commit` if the command is not found. On Windows, `pip install` often puts scripts in `%APPDATA%\Python\Python314\Scripts`, which may not be on your PATH.
+
+3. Optional — run against all tracked files:
 
    ```bash
-   pre-commit run --all-files
+   python -m pre_commit run --all-files
    ```
+
+### Fix `pre-commit` not recognized (Windows)
+
+Either always use the module form:
+
+```powershell
+python -m pre_commit install
+python -m pre_commit run --all-files
+```
+
+Or add Python user scripts to PATH (adjust `Python314` if your version differs):
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  $env:Path + ";$env:APPDATA\Python\Python314\Scripts",
+  "User")
+```
+
+Restart the terminal after updating PATH.
 
 ### What runs on each commit
 
