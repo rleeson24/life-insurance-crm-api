@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -21,19 +22,22 @@ public sealed class UpdateMedicareEnrollmentUseCase : IUpdateMedicareEnrollmentU
     private readonly IMedicareEnrollmentRepository _medicareEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly IMedicareEnrollmentInputValidator _medicareEnrollmentInputValidator;
 
     public UpdateMedicareEnrollmentUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IMedicareEnrollmentRepository medicareEnrollmentRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        IMedicareEnrollmentInputValidator medicareEnrollmentInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _medicareEnrollmentRepository = medicareEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _medicareEnrollmentInputValidator = medicareEnrollmentInputValidator;
     }
 
     public async Task<ProcessResponse<MedicareEnrollmentDto>> Execute(ProcessRequest<UpdateMedicareEnrollmentModel> request)
@@ -49,6 +53,12 @@ public sealed class UpdateMedicareEnrollmentUseCase : IUpdateMedicareEnrollmentU
             return ProcessResponse<MedicareEnrollmentDto>.InvalidRequestResponse(
                 "Medicare enrollment id is required",
                 ClientErrorCodes.MedicareEnrollmentIdInvalid);
+        }
+
+        var inputValidation = _medicareEnrollmentInputValidator.ValidateUpdate(request.Payload);
+        if (inputValidation.IsFailed(out ProcessResponse<MedicareEnrollmentDto> inputFailure))
+        {
+            return inputFailure;
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);

@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -22,6 +23,7 @@ public sealed class CreateSupplementalEnrollmentUseCase : ICreateSupplementalEnr
     private readonly ISupplementalEnrollmentRepository _supplementalEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISupplementalEnrollmentInputValidator _supplementalEnrollmentInputValidator;
 
     public CreateSupplementalEnrollmentUseCase(
         IActorTracker actorTracker,
@@ -29,7 +31,8 @@ public sealed class CreateSupplementalEnrollmentUseCase : ICreateSupplementalEnr
         IClientRepository clientRepository,
         ISupplementalEnrollmentRepository supplementalEnrollmentRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISupplementalEnrollmentInputValidator supplementalEnrollmentInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
@@ -37,6 +40,7 @@ public sealed class CreateSupplementalEnrollmentUseCase : ICreateSupplementalEnr
         _supplementalEnrollmentRepository = supplementalEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _supplementalEnrollmentInputValidator = supplementalEnrollmentInputValidator;
     }
 
     public async Task<ProcessResponse<SupplementalEnrollmentDto>> Execute(ProcessRequest<CreateSupplementalEnrollmentModel> request)
@@ -54,6 +58,12 @@ public sealed class CreateSupplementalEnrollmentUseCase : ICreateSupplementalEnr
                 UseCaseStatus.NotFound,
                 "Client not found",
                 ClientErrorCodes.ClientNotFound);
+        }
+
+        var inputValidation = _supplementalEnrollmentInputValidator.ValidateCreate(request.Payload);
+        if (inputValidation.IsFailed(out ProcessResponse<SupplementalEnrollmentDto> inputFailure))
+        {
+            return inputFailure;
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);

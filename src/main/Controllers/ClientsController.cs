@@ -1,5 +1,6 @@
 using LifeInsuranceCRM.API.Services;
 using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -24,6 +25,7 @@ public sealed class ClientsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.CanRead)]
     public Task<IActionResult> List(
         [FromQuery] ListClientsRequest request,
         [FromServices] IListClientsUseCase useCase,
@@ -31,6 +33,7 @@ public sealed class ClientsController : ApiControllerBase
         FromUseCase(useCase.Execute(_processRequestFactory.Create(request, cancellationToken)));
 
     [HttpGet("{clientId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanRead)]
     public Task<IActionResult> Get(
         Guid clientId,
         [FromServices] IGetClientUseCase useCase,
@@ -41,6 +44,7 @@ public sealed class ClientsController : ApiControllerBase
     }
 
     [HttpGet("{clientId:guid}/detail")]
+    [Authorize(Policy = AuthorizationPolicies.CanRead)]
     public Task<IActionResult> GetDetail(
         Guid clientId,
         [FromServices] IGetClientDetailUseCase useCase,
@@ -51,6 +55,7 @@ public sealed class ClientsController : ApiControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.CanWrite)]
     public Task<IActionResult> Create(
         [FromBody] CreateClientModel model,
         [FromServices] ICreateClientUseCase useCase,
@@ -60,6 +65,7 @@ public sealed class ClientsController : ApiControllerBase
             client => CreatedAtAction(nameof(Get), new { clientId = client.ClientId }, client));
 
     [HttpPut("{clientId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanWrite)]
     public Task<IActionResult> Update(
         Guid clientId,
         [FromBody] UpdateClientModel model,
@@ -68,6 +74,7 @@ public sealed class ClientsController : ApiControllerBase
         FromUseCase(useCase.Execute(_processRequestFactory.Create(model with { ClientId = clientId }, cancellationToken)));
 
     [HttpPatch("{clientId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanWrite)]
     public Task<IActionResult> UpdateStatus(
         Guid clientId,
         [FromBody] UpdateClientStatusModel model,
@@ -76,6 +83,7 @@ public sealed class ClientsController : ApiControllerBase
         FromUseCase(useCase.Execute(_processRequestFactory.Create(model with { ClientId = clientId }, cancellationToken)));
 
     [HttpDelete("{clientId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanDelete)]
     public Task<IActionResult> Delete(
         Guid clientId,
         [FromServices] IDeleteClientUseCase useCase,

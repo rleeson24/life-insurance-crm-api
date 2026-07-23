@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -22,6 +23,7 @@ public sealed class CreateClientInteractionUseCase : ICreateClientInteractionUse
     private readonly IClientInteractionRepository _clientInteractionRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly IClientInteractionInputValidator _clientInteractionInputValidator;
 
     public CreateClientInteractionUseCase(
         IActorTracker actorTracker,
@@ -29,7 +31,8 @@ public sealed class CreateClientInteractionUseCase : ICreateClientInteractionUse
         IClientRepository clientRepository,
         IClientInteractionRepository clientInteractionRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        IClientInteractionInputValidator clientInteractionInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
@@ -37,6 +40,7 @@ public sealed class CreateClientInteractionUseCase : ICreateClientInteractionUse
         _clientInteractionRepository = clientInteractionRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _clientInteractionInputValidator = clientInteractionInputValidator;
     }
 
     public async Task<ProcessResponse<ClientInteractionDto>> Execute(ProcessRequest<CreateClientInteractionModel> request)
@@ -54,6 +58,12 @@ public sealed class CreateClientInteractionUseCase : ICreateClientInteractionUse
                 UseCaseStatus.NotFound,
                 "Client not found",
                 ClientErrorCodes.ClientNotFound);
+        }
+
+        var inputValidation = _clientInteractionInputValidator.ValidateCreate(request.Payload);
+        if (inputValidation.IsFailed(out ProcessResponse<ClientInteractionDto> inputFailure))
+        {
+            return inputFailure;
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);

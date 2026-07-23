@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -21,19 +22,22 @@ public sealed class UpdateSupplementalEnrollmentUseCase : IUpdateSupplementalEnr
     private readonly ISupplementalEnrollmentRepository _supplementalEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISupplementalEnrollmentInputValidator _supplementalEnrollmentInputValidator;
 
     public UpdateSupplementalEnrollmentUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         ISupplementalEnrollmentRepository supplementalEnrollmentRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISupplementalEnrollmentInputValidator supplementalEnrollmentInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _supplementalEnrollmentRepository = supplementalEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _supplementalEnrollmentInputValidator = supplementalEnrollmentInputValidator;
     }
 
     public async Task<ProcessResponse<SupplementalEnrollmentDto>> Execute(ProcessRequest<UpdateSupplementalEnrollmentModel> request)
@@ -49,6 +53,12 @@ public sealed class UpdateSupplementalEnrollmentUseCase : IUpdateSupplementalEnr
             return ProcessResponse<SupplementalEnrollmentDto>.InvalidRequestResponse(
                 "Supplemental enrollment id is required",
                 ClientErrorCodes.SupplementalEnrollmentIdInvalid);
+        }
+
+        var inputValidation = _supplementalEnrollmentInputValidator.ValidateUpdate(request.Payload);
+        if (inputValidation.IsFailed(out ProcessResponse<SupplementalEnrollmentDto> inputFailure))
+        {
+            return inputFailure;
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);

@@ -7,6 +7,7 @@ using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Tests.Utilities;
 using LifeInsuranceCRM.Utilities;
@@ -47,7 +48,8 @@ public class CreateMedicareEnrollmentUseCaseTests : UseCaseTestBase<CreateMedica
             ClientRepository.Object,
             MedicareEnrollmentRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            new MedicareEnrollmentInputValidator());
 
     public sealed class Success_Setup : CreateMedicareEnrollmentUseCaseTests, IAsyncLifetime
     {

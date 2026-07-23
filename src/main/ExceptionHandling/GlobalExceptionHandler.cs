@@ -24,13 +24,17 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         _logger.LogError(exception, "Unhandled exception");
 
-        var (status, title, errorCode) = exception switch
+        var (status, title, detail, errorCode) = exception switch
         {
-            CrmException crm => (MapStatus(crm.Status), crm.Message, crm.ErrorCode),
-            _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", "unexpected_error"),
+            CrmException crm => (MapStatus(crm.Status), crm.Message, crm.Message, crm.ErrorCode),
+            _ => (
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred.",
+                "An unexpected error occurred.",
+                "unexpected_error"),
         };
 
-        var problem = _problemDetailsFactory.Create(httpContext, status, title, exception.Message, errorCode);
+        var problem = _problemDetailsFactory.Create(httpContext, status, title, detail, errorCode);
         httpContext.Response.StatusCode = status;
         await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
         return true;

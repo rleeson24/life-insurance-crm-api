@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -22,6 +23,7 @@ public sealed class CreateMedicareEnrollmentUseCase : ICreateMedicareEnrollmentU
     private readonly IMedicareEnrollmentRepository _medicareEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly IMedicareEnrollmentInputValidator _medicareEnrollmentInputValidator;
 
     public CreateMedicareEnrollmentUseCase(
         IActorTracker actorTracker,
@@ -29,7 +31,8 @@ public sealed class CreateMedicareEnrollmentUseCase : ICreateMedicareEnrollmentU
         IClientRepository clientRepository,
         IMedicareEnrollmentRepository medicareEnrollmentRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        IMedicareEnrollmentInputValidator medicareEnrollmentInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
@@ -37,6 +40,7 @@ public sealed class CreateMedicareEnrollmentUseCase : ICreateMedicareEnrollmentU
         _medicareEnrollmentRepository = medicareEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _medicareEnrollmentInputValidator = medicareEnrollmentInputValidator;
     }
 
     public async Task<ProcessResponse<MedicareEnrollmentDto>> Execute(ProcessRequest<CreateMedicareEnrollmentModel> request)
@@ -54,6 +58,12 @@ public sealed class CreateMedicareEnrollmentUseCase : ICreateMedicareEnrollmentU
                 UseCaseStatus.NotFound,
                 "Client not found",
                 ClientErrorCodes.ClientNotFound);
+        }
+
+        var inputValidation = _medicareEnrollmentInputValidator.ValidateCreate(request.Payload);
+        if (inputValidation.IsFailed(out ProcessResponse<MedicareEnrollmentDto> inputFailure))
+        {
+            return inputFailure;
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);

@@ -4,6 +4,7 @@ using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using Moq;
 using LifeInsuranceCRM.Core.Abstractions.Auth;
+using LifeInsuranceCRM.Core.Constants;
 
 namespace LifeInsuranceCRM.Tests.Utilities;
 
@@ -25,10 +26,27 @@ public static class FixtureExtensions
     }
 
     public static CreateClientModel CreateValidCreateClientModel(this Fixture fixture) =>
-        fixture.Build<CreateClientModel>()
-            .With(m => m.FirstName, fixture.Create<string>())
-            .With(m => m.LastName, fixture.Create<string>())
-            .Create();
+        new()
+        {
+            FirstName = "Jane",
+            LastName = "Smith",
+            PrimaryPhone = "5551234567",
+            IsActive = true,
+            IsAcaClient = false,
+            HasContactConsent = false,
+        };
+
+    public static UpdateClientModel CreateValidUpdateClientModel(this Fixture fixture, Guid clientId) =>
+        new()
+        {
+            ClientId = clientId,
+            FirstName = "Jane",
+            LastName = "Smith",
+            PrimaryPhone = "5551234567",
+            IsActive = true,
+            IsAcaClient = false,
+            HasContactConsent = false,
+        };
 
     public static Client CreateClient(
         this Fixture fixture,
@@ -106,11 +124,13 @@ public static class FixtureExtensions
     public static void SetupAuthenticatedActor(
         this Mock<IActorTracker> actorTracker,
         Guid userId,
-        Guid tenantId)
+        Guid tenantId,
+        string role = OrganizationRoles.Admin)
     {
         actorTracker.Setup(a => a.IsAuthenticated).Returns(true);
         actorTracker.Setup(a => a.UserId).Returns(userId);
         actorTracker.Setup(a => a.TenantId).Returns(tenantId);
+        actorTracker.Setup(a => a.Role).Returns(role);
     }
 
     public static void SetupUnauthenticatedActor(this Mock<IActorTracker> actorTracker)
@@ -118,5 +138,6 @@ public static class FixtureExtensions
         actorTracker.Setup(a => a.IsAuthenticated).Returns(false);
         actorTracker.Setup(a => a.UserId).Returns((Guid?)null);
         actorTracker.Setup(a => a.TenantId).Returns((Guid?)null);
+        actorTracker.Setup(a => a.Role).Returns((string?)null);
     }
 }

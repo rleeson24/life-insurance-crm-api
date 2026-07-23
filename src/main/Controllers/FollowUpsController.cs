@@ -1,5 +1,6 @@
 using LifeInsuranceCRM.API.Services;
 using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using Microsoft.AspNetCore.Authorization;
@@ -23,6 +24,7 @@ public sealed class FollowUpsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.CanRead)]
     public Task<IActionResult> List(
         [FromServices] IListFollowUpInteractionsUseCase useCase,
         CancellationToken cancellationToken)

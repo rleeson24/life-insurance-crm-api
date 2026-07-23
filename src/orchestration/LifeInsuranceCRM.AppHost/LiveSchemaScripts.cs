@@ -16,6 +16,7 @@ internal static class LiveSchemaScripts
         "006_OrganizationUsers.sql",
         "007_AuthSecurityEvents.sql",
         "008_RLS.sql",
+        "009_OrganizationUserRoles.sql",
         "seed/001_DevelopmentTenant.sql",
     ];
 

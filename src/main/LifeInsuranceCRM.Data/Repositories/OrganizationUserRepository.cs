@@ -1,12 +1,13 @@
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Models;
 using Microsoft.Data.SqlClient;
 
 namespace LifeInsuranceCRM.Data.Repositories;
 
 public sealed class OrganizationUserRepository : IOrganizationUserRepository
 {
-    private const string SelectTenantSql = """
-        SELECT TOP (1) TenantId
+    private const string SelectUserContextSql = """
+        SELECT TOP (1) TenantId, Role, IsActive
         FROM dbo.OrganizationUsers
         WHERE UserId = @UserId AND IsDeleted = 0;
         """;
@@ -18,22 +19,27 @@ public sealed class OrganizationUserRepository : IOrganizationUserRepository
         _dbExecutor = dbExecutor;
     }
 
-    public async Task<Guid?> GetTenantIdForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<OrganizationUserContext?> GetUserContextAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
     {
-        Guid? tenantId = null;
+        OrganizationUserContext? userContext = null;
 
         await _dbExecutor.ExecuteReaderAsync(
-            SelectTenantSql,
+            SelectUserContextSql,
             async (reader, ct) =>
             {
                 if (await reader.ReadAsync(ct))
                 {
-                    tenantId = reader.GetGuid(0);
+                    userContext = new OrganizationUserContext(
+                        reader.GetGuid(0),
+                        reader.GetString(1),
+                        reader.GetBoolean(2));
                 }
             },
             cancellationToken,
             new SqlParameter("@UserId", userId));
 
-        return tenantId;
+        return userContext;
     }
 }

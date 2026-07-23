@@ -8,6 +8,7 @@ using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.UseCases.Clients;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Tests.Utilities;
 using LifeInsuranceCRM.Utilities;
 using Moq;
@@ -43,7 +44,7 @@ public class CreateClientUseCaseTests : UseCaseTestBase<CreateClientUseCase>
     }
 
     protected override CreateClientUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers());
+        new(ActorTracker.Object, NowProvider.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers(), new ClientInputValidator());
 
     public sealed class Success_Setup : CreateClientUseCaseTests, IAsyncLifetime
     {

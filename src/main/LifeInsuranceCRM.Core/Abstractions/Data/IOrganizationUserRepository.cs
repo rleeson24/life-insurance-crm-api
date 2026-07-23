@@ -1,8 +1,8 @@
-using LifeInsuranceCRM.Core.Entities;
+using LifeInsuranceCRM.Core.Models;
 
 namespace LifeInsuranceCRM.Core.Abstractions.Data;
 
 public interface IOrganizationUserRepository
 {
-    Task<Guid?> GetTenantIdForUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<OrganizationUserContext?> GetUserContextAsync(Guid userId, CancellationToken cancellationToken = default);
 }

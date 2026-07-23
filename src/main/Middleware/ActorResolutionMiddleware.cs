@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using LifeInsuranceCRM.API.Services;
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
@@ -22,6 +23,7 @@ public sealed class ActorResolutionMiddleware
         IActorTracker actorTracker,
         IOrganizationUserRepository organizationUserRepository,
         IAuthSecurityEventRecorder securityEventRecorder,
+        IProblemDetailsFactory problemDetailsFactory,
         IOptions<AuthOptions> authOptions)
     {
         if (context.User.Identity?.IsAuthenticated == true)
@@ -34,39 +36,43 @@ public sealed class ActorResolutionMiddleware
                 var email = context.User.FindFirstValue(ClaimTypes.Email)
                     ?? context.User.FindFirstValue("preferred_username");
 
-                Guid? tenantId = null;
+                var userContext = await organizationUserRepository.GetUserContextAsync(
+                    userId,
+                    context.RequestAborted);
 
-                if (authOptions.Value.UseDevelopmentAuthentication)
+                if (userContext is null)
                 {
-                    tenantId = authOptions.Value.DevelopmentTenantId;
-                }
-                else
-                {
-                    tenantId = await organizationUserRepository.GetTenantIdForUserAsync(
-                        userId,
-                        context.RequestAborted);
-                }
-
-                if (tenantId.HasValue)
-                {
-                    actorTracker.SetActor(userId, email, tenantId.Value);
-                    await securityEventRecorder.RecordAsync(
-                        AuthSecurityEventTypes.TenantResolved,
-                        success: true,
-                        cancellationToken: context.RequestAborted);
-                }
-                else
-                {
-                    context.Items["TenantAccessDeniedRecorded"] = true;
-                    await securityEventRecorder.RecordAsync(
+                    await WriteForbiddenAsync(
+                        context,
+                        problemDetailsFactory,
+                        securityEventRecorder,
                         AuthSecurityEventTypes.TenantAccessDenied,
-                        success: false,
-                        failureReason: "Tenant not found for user",
+                        "Tenant not found for user",
                         cancellationToken: context.RequestAborted);
-
-                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return;
                 }
+
+                if (!userContext.IsActive)
+                {
+                    await WriteForbiddenAsync(
+                        context,
+                        problemDetailsFactory,
+                        securityEventRecorder,
+                        AuthSecurityEventTypes.Forbidden,
+                        "User account is inactive",
+                        cancellationToken: context.RequestAborted);
+                    return;
+                }
+
+                var tenantId = authOptions.Value.UseDevelopmentAuthentication
+                    ? authOptions.Value.DevelopmentTenantId
+                    : userContext.TenantId;
+
+                actorTracker.SetActor(userId, email, tenantId, userContext.Role);
+                await securityEventRecorder.RecordAsync(
+                    AuthSecurityEventTypes.TenantResolved,
+                    success: true,
+                    cancellationToken: context.RequestAborted);
             }
         }
 
@@ -78,5 +84,31 @@ public sealed class ActorResolutionMiddleware
         {
             actorTracker.Clear();
         }
+    }
+
+    private static async Task WriteForbiddenAsync(
+        HttpContext context,
+        IProblemDetailsFactory problemDetailsFactory,
+        IAuthSecurityEventRecorder securityEventRecorder,
+        string eventType,
+        string failureReason,
+        CancellationToken cancellationToken)
+    {
+        context.Items["TenantAccessDeniedRecorded"] = true;
+        await securityEventRecorder.RecordAsync(
+            eventType,
+            success: false,
+            failureReason: failureReason,
+            cancellationToken: cancellationToken);
+
+        var problem = problemDetailsFactory.Create(
+            context,
+            StatusCodes.Status403Forbidden,
+            "Forbidden",
+            failureReason,
+            "access.forbidden");
+
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsJsonAsync(problem, cancellationToken);
     }
 }

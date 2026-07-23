@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>life-insurance-crm-api-dev</UserSecretsId>
     <RootNamespace>LifeInsuranceCRM.API</RootNamespace>
     <DefaultItemExcludes>$(DefaultItemExcludes);LifeInsuranceCRM.Core/**;LifeInsuranceCRM.Data/**;LifeInsuranceCRM.Utilities/**</DefaultItemExcludes>
   </PropertyGroup>

@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -21,19 +22,22 @@ public sealed class CreateClientUseCase : ICreateClientUseCase
     private readonly IClientRepository _clientRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly IClientInputValidator _clientInputValidator;
 
     public CreateClientUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IClientRepository clientRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        IClientInputValidator clientInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientRepository = clientRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _clientInputValidator = clientInputValidator;
     }
 
     public async Task<ProcessResponse<ClientDto>> Execute(ProcessRequest<CreateClientModel> request)
@@ -44,18 +48,10 @@ public sealed class CreateClientUseCase : ICreateClientUseCase
             return failure;
         }
 
-        if (string.IsNullOrWhiteSpace(request.Payload.FirstName))
+        var inputValidation = _clientInputValidator.ValidateCreate(request.Payload);
+        if (inputValidation.IsFailed(out ProcessResponse<ClientDto> inputFailure))
         {
-            return ProcessResponse<ClientDto>.InvalidRequestResponse(
-                "First name is required",
-                ClientErrorCodes.FirstNameRequired);
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Payload.LastName))
-        {
-            return ProcessResponse<ClientDto>.InvalidRequestResponse(
-                "Last name is required",
-                ClientErrorCodes.LastNameRequired);
+            return inputFailure;
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);

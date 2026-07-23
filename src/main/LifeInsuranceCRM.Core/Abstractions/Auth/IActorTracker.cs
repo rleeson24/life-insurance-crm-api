@@ -8,9 +8,11 @@ public interface IActorTracker
 
     Guid? TenantId { get; }
 
+    string? Role { get; }
+
     bool IsAuthenticated { get; }
 
-    void SetActor(Guid userId, string? userEmail, Guid tenantId);
+    void SetActor(Guid userId, string? userEmail, Guid tenantId, string role);
 
     void Clear();
 }

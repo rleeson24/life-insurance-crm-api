@@ -7,6 +7,7 @@ using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Tests.Utilities;
 using LifeInsuranceCRM.Utilities;
@@ -35,7 +36,11 @@ public class CreateClientInteractionUseCaseTests : UseCaseTestBase<CreateClientI
         _userId = CreateGuid();
         _clientId = CreateGuid();
         _now = CreateTimestamp();
-        _inputModel = Create<CreateClientInteractionModel>() with { ClientId = _clientId };
+        _inputModel = Create<CreateClientInteractionModel>() with
+        {
+            ClientId = _clientId,
+            Summary = "Follow-up call",
+        };
         var interactionId = CreateGuid();
         _createdInteraction = TestFixture.CreateClientInteraction(interactionId, _clientId, _tenantId, _userId, _now);
     }
@@ -47,7 +52,8 @@ public class CreateClientInteractionUseCaseTests : UseCaseTestBase<CreateClientI
             ClientRepository.Object,
             ClientInteractionRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            new ClientInteractionInputValidator());
 
     public sealed class Success_Setup : CreateClientInteractionUseCaseTests, IAsyncLifetime
     {

@@ -7,6 +7,7 @@ using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Tests.Utilities;
 using LifeInsuranceCRM.Utilities;
@@ -33,11 +34,11 @@ public class UpdateClientUseCaseTests : UseCaseTestBase<UpdateClientUseCase>
         _userId = CreateGuid();
         _clientId = CreateGuid();
         _now = CreateTimestamp();
-        _inputModel = Create<UpdateClientModel>() with { ClientId = _clientId };
+        _inputModel = TestFixture.CreateValidUpdateClientModel(_clientId);
     }
 
     protected override UpdateClientUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers());
+        new(ActorTracker.Object, NowProvider.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers(), new ClientInputValidator());
 
     public sealed class Success_Setup : UpdateClientUseCaseTests, IAsyncLifetime
     {

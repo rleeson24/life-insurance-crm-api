@@ -1,5 +1,6 @@
 using LifeInsuranceCRM.API.Services;
 using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -24,6 +25,7 @@ public sealed class ClientMedicareEnrollmentsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.CanRead)]
     public Task<IActionResult> List(
         Guid clientId,
         [FromServices] IListMedicareEnrollmentsUseCase useCase,
@@ -34,6 +36,7 @@ public sealed class ClientMedicareEnrollmentsController : ApiControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.CanWrite)]
     public Task<IActionResult> Create(
         Guid clientId,
         [FromBody] CreateMedicareEnrollmentModel model,
@@ -42,6 +45,7 @@ public sealed class ClientMedicareEnrollmentsController : ApiControllerBase
         FromUseCase(useCase.Execute(_processRequestFactory.Create(model with { ClientId = clientId }, cancellationToken)));
 
     [HttpPut("{enrollmentId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanWrite)]
     public Task<IActionResult> Update(
         Guid clientId,
         Guid enrollmentId,
@@ -53,6 +57,7 @@ public sealed class ClientMedicareEnrollmentsController : ApiControllerBase
             cancellationToken)));
 
     [HttpDelete("{enrollmentId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanDelete)]
     public Task<IActionResult> Delete(
         Guid clientId,
         Guid enrollmentId,

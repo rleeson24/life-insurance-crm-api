@@ -12,8 +12,14 @@ END
 IF NOT EXISTS (SELECT 1 FROM dbo.OrganizationUsers WHERE UserId = @DevUserId AND TenantId = @TenantId)
 BEGIN
     INSERT INTO dbo.OrganizationUsers (
-        TenantId, UserId, EmailAddress, DisplayName, CreatedByUserId, UpdatedByUserId)
+        TenantId, UserId, EmailAddress, DisplayName, Role, CreatedByUserId, UpdatedByUserId)
     VALUES (
-        @TenantId, @DevUserId, N'dev-user@localhost', N'Development User', @SystemUserId, @SystemUserId);
+        @TenantId, @DevUserId, N'dev-user@localhost', N'Development User', N'Admin', @SystemUserId, @SystemUserId);
+END
+ELSE IF COL_LENGTH('dbo.OrganizationUsers', 'Role') IS NOT NULL
+BEGIN
+    UPDATE dbo.OrganizationUsers
+    SET Role = N'Admin'
+    WHERE UserId = @DevUserId AND TenantId = @TenantId AND IsDeleted = 0;
 END
 GO

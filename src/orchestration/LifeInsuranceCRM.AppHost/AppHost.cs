@@ -17,9 +17,8 @@ var api = builder.AddProject<Projects.LifeInsuranceCRM_API>("lifeinsurancecrm-ap
     .WithExternalHttpEndpoints();
 
 builder.AddViteApp("lifeinsurancecrm-client", "../../../../life-insurance-crm-client/src")
+    .WithHttpEndpoint(port: 5387, env: "PORT")
     .WithReference(api)
     .WithEnvironment("VITE_API_BASE_URL", api.GetEndpoint("http"))
-    .WithExternalHttpEndpoints()
     .WaitFor(api);
-
 builder.Build().Run();
