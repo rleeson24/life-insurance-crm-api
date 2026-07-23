@@ -1,0 +1,45 @@
+title = "LifeInsuranceCRM gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+id = "development-guids"
+description = "Well-known development tenant, user, and system GUIDs"
+regexTarget = "match"
+regexes = [
+  '''11111111-1111-1111-1111-111111111111''',
+  '''22222222-2222-2222-2222-222222222222''',
+  '''00000000-0000-0000-0000-000000000001''',
+]
+
+[[allowlists]]
+id = "development-placeholders"
+description = "Local development placeholders that are not secrets"
+regexes = [
+  '''dev-user@localhost''',
+]
+
+[[rules]]
+id = "azure-sql-connection-string-password"
+description = "Azure SQL or SQL Server connection string with password"
+regex = '''(?i)(Server=tcp:[^\s'"]+|Data Source=[^\s'"]+).*(Password|Pwd)=[^;'"\s]+'''
+keywords = ["Password=", "Pwd="]
+
+[[rules]]
+id = "azure-storage-account-key"
+description = "Azure Storage account key"
+regex = '''(?i)AccountKey\s*=\s*[A-Za-z0-9+/=]{40,}'''
+keywords = ["AccountKey"]
+
+[[rules]]
+id = "azure-client-secret"
+description = "Azure AD or OAuth client secret assignment"
+regex = '''(?i)(client[_-]?secret|ClientSecret)\s*[:=]\s*['"]?[A-Za-z0-9~._\-]{8,}'''
+keywords = ["client_secret", "ClientSecret", "client-secret"]
+
+[[rules]]
+id = "jwt-token"
+description = "JSON Web Token"
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+keywords = ["eyJ"]
