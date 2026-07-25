@@ -81,7 +81,7 @@ GitHub Actions runs the same gitleaks configuration on every push and pull reque
 If gitleaks reports a false positive:
 
 1. Confirm the value is not a real secret.
-2. Add a targeted allowlist rule to [`.gitleaks.toml`](../../.gitleaks.toml) with a short description.
+2. Add the value to the `[allowlist].regexes` array in [`.gitleaks.toml`](../../.gitleaks.toml) (see the description block above it).
 3. Avoid broad regexes that could hide actual leaks.
 
-Development GUIDs (`11111111-…`, `22222222-…`, `00000000-…`) are already allowlisted.
+Development GUIDs and Azure RBAC role definition IDs are already allowlisted.

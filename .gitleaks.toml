@@ -3,21 +3,17 @@ title = "LifeInsuranceCRM gitleaks config"
 [extend]
 useDefault = true
 
-[[allowlists]]
-id = "development-guids"
-description = "Well-known development tenant, user, and system GUIDs"
-regexTarget = "match"
+# v8.24.x (pre-commit) uses [allowlist] singular; [[allowlists]] is ignored until v8.25+.
+[allowlist]
+description = "LifeInsuranceCRM false positives and public infrastructure identifiers"
 regexes = [
   '''11111111-1111-1111-1111-111111111111''',
   '''22222222-2222-2222-2222-222222222222''',
   '''00000000-0000-0000-0000-000000000001''',
-]
-
-[[allowlists]]
-id = "development-placeholders"
-description = "Local development placeholders that are not secrets"
-regexes = [
   '''dev-user@localhost''',
+  '''7f951dda-4ed3-4680-a7ca-43fe172d538d''',
+  '''8311e382-0749-4cb8-b61a-304f252e45ec''',
+  '''b24988ac-6180-42a0-ab88-20f7382dd24c''',
 ]
 
 [[rules]]
