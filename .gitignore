@@ -48,6 +48,11 @@ TestResults/
 # MSBuild Binary and Structured Log
 *.binlog
 
+# Bicep compile output
+infra/**/*.json
+infra/parameters/*.local.json
+infra/parameters/*.local.bicepparam
+
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*

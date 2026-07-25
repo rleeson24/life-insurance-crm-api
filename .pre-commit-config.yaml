@@ -1,9 +1,10 @@
 # See https://pre-commit.com for usage. Install: pip install pre-commit && pre-commit install
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.2
+    rev: v8.28.0
     hooks:
       - id: gitleaks
+        args: ['--config', '.gitleaks.toml']
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
