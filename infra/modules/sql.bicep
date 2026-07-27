@@ -1,5 +1,6 @@
 param location string
 param baseName string
+param sqlServerName string
 param tags object
 param administratorLogin string
 @secure()
@@ -19,7 +20,7 @@ var databaseName = 'LifeInsuranceCRM'
 var isServerless = skuName == 'GP_S_Gen5'
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
-  name: '${baseName}-sql'
+  name: sqlServerName
   location: location
   tags: tags
   properties: {

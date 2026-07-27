@@ -1,5 +1,9 @@
 using '../main.bicep'
 
+// Canonical subscription: 605a6796-5cf0-4a61-80f0-ff2d484360ee ("Primary")
+// SQL server, ACR, and Key Vault names are auto-generated per resource group (globally unique).
+// Do not set sqlServerNameOverride / acrNameOverride unless importing an existing server/registry.
+
 param environment = 'dev'
 param location = 'centralus'
 param githubOwner = 'rleeson24'

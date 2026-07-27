@@ -51,8 +51,11 @@ Override any value in `infra/parameters/*.bicepparam` or at deploy time, e.g. `-
 ## Prerequisites
 
 1. Azure subscription and `az` CLI logged in
-2. Resource group per environment, e.g. `rg-licrm-dev` (can be in any region; resources use the `location` parameter)
-3. GitHub repository environments: `dev`, `prod`
+2. **Canonical subscription:** `605a6796-5cf0-4a61-80f0-ff2d484360ee` (Primary). The deploy script switches to this subscription automatically.
+3. Resource group per environment, e.g. `rg-licrm-dev` (can be in any region; resources use the `location` parameter)
+4. GitHub repository environments: `dev`, `prod`
+
+SQL server, ACR, and Key Vault names are **globally unique** across all of Azure. Bicep generates names from the subscription + resource group ID so a new `rg-licrm-dev` never collides with resources in another subscription. When migrating existing servers/registries into this subscription, set `sqlServerNameOverride` / `acrNameOverride` in the parameter file.
 
 ### Pick a region where Azure SQL is allowed
 
@@ -156,20 +159,23 @@ Typical order:
 2. Configure GitHub environment secrets from deployment outputs
 3. Run **Deploy API** to push the real API image (replaces the placeholder hello-world image)
 
-## Security notes (skeleton)
+## Security notes
 
-This is **PR 2 infrastructure skeleton**. Follow-up PRs will wire:
+**PR 3 (API runtime auth)** wires Key Vault configuration and managed-identity SQL in the API. See [`docs/security/azure-runtime-auth.md`](../docs/security/azure-runtime-auth.md).
 
-- Key Vault configuration provider in the API
-- Managed identity SQL auth (replacing SQL login)
-- Entra ID app registration values in Container App settings
+After deploying infra:
+
+1. Run [`scripts/grant-api-sql-access.ps1`](../scripts/grant-api-sql-access.ps1) to map the Container App identity to the SQL database.
+2. Optionally populate Key Vault secrets (`AzureAd--TenantId`, etc.) for a later Entra PR.
+3. Deploy the API image via GitHub Actions.
+
+Infra grants the API managed identity **Key Vault Secrets User** and **AcrPull**. SQL still needs the one-time Entra database user script above.
+
+Remaining follow-ups:
+
+- Entra ID app registration values in Container App settings / Key Vault
 - Optional CMK for SQL TDE
-
-Until then:
-
-- SQL uses a bootstrap SQL login — rotate and move to Entra-only admin
-- Container App ships with a placeholder public image until the first API deploy
-- Key Vault has no secrets populated yet
+- Retire bootstrap SQL login once Entra-only admin is verified
 
 ## Validate templates locally
 

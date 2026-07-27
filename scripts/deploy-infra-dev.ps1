@@ -2,16 +2,28 @@
 # file so special characters are not mangled by PowerShell and az accepts the override.
 param(
     [string]$ResourceGroup = 'rg-licrm-dev',
-    [string]$Location = 'centralus'
+    [string]$Location = 'centralus',
+    [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+$currentAccount = az account show --query "{name:name, id:id}" -o json | ConvertFrom-Json
+if ($currentAccount.id -ne $SubscriptionId) {
+    Write-Host "Switching subscription from $($currentAccount.name) ($($currentAccount.id))"
+    Write-Host "                  to target $SubscriptionId"
+    az account set --subscription $SubscriptionId | Out-Null
+    $currentAccount = az account show --query "{name:name, id:id}" -o json | ConvertFrom-Json
+}
+
+Write-Host "Subscription: $($currentAccount.name) ($($currentAccount.id))"
+
 $exists = az group exists --name $ResourceGroup
 if ($exists -eq 'false') {
     Write-Host "Creating resource group $ResourceGroup in $Location..."
+    Write-Host "Note: SQL server and ACR names are globally unique; a new RG gets auto-generated names."
     az group create --name $ResourceGroup --location $Location | Out-Null
 }
 

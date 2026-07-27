@@ -1,4 +1,6 @@
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using LifeInsuranceCRM.API.Auth;
+using LifeInsuranceCRM.API.Configuration;
 using LifeInsuranceCRM.API.Database;
 using LifeInsuranceCRM.API.ExceptionHandling;
 using LifeInsuranceCRM.API.Middleware;
@@ -16,6 +18,7 @@ using Microsoft.Identity.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddAzureKeyVaultConfiguration();
 builder.AddServiceDefaults();
 
 AddConfigurationOptions(builder);
@@ -52,17 +55,8 @@ void AddConfigurationOptions(WebApplicationBuilder webBuilder)
     webBuilder.Services.Configure<AuthOptions>(webBuilder.Configuration.GetSection(AuthOptions.SectionName));
     webBuilder.Services.Configure<CorsOptions>(webBuilder.Configuration.GetSection(CorsOptions.SectionName));
     webBuilder.Services.Configure<RateLimitingOptions>(webBuilder.Configuration.GetSection(RateLimitingOptions.SectionName));
-    webBuilder.Services.Configure<DatabaseOptions>(options =>
-    {
-        webBuilder.Configuration.GetSection(DatabaseOptions.SectionName).Bind(options);
-
-        // Aspire injects ConnectionStrings:LifeInsuranceCRM when running via AppHost.
-        var aspireConnectionString = webBuilder.Configuration.GetConnectionString("LifeInsuranceCRM");
-        if (!string.IsNullOrWhiteSpace(aspireConnectionString))
-        {
-            options.ConnectionString = aspireConnectionString;
-        }
-    });
+    webBuilder.Services.Configure<KeyVaultOptions>(webBuilder.Configuration.GetSection(KeyVaultOptions.SectionName));
+    webBuilder.Services.ConfigureDatabaseOptions(webBuilder.Configuration);
 }
 
 void AddWebApi(WebApplicationBuilder webBuilder)
@@ -234,14 +228,14 @@ async Task InitializeDevelopmentDatabaseAsync(WebApplication webApp)
         return;
     }
 
-    var connectionString = webApp.Configuration.GetConnectionString("LifeInsuranceCRM")
-        ?? webApp.Configuration["Database:ConnectionString"];
+    var connectionString = DatabaseConnectionStringResolver.Resolve(webApp.Configuration);
 
     if (string.IsNullOrWhiteSpace(connectionString))
     {
         return;
     }
 
-    var initializer = webApp.Services.GetRequiredService<IDevelopmentDatabaseInitializer>();
+    await using var scope = webApp.Services.CreateAsyncScope();
+    var initializer = scope.ServiceProvider.GetRequiredService<IDevelopmentDatabaseInitializer>();
     await initializer.InitializeAsync(connectionString);
 }

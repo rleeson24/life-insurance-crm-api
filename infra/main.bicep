@@ -68,16 +68,30 @@ param enableSqlAuditing bool = environment == 'prod'
 @description('Send SQL diagnostics to Log Analytics. Disabled in dev to reduce ingestion cost.')
 param enableSqlDiagnostics bool = environment == 'prod'
 
+@description('Optional override for an existing globally unique ACR name (e.g. licrmdevacr).')
+param acrNameOverride string = ''
+
+@description('Optional override for an existing globally unique SQL server name (e.g. licrm-dev-sql).')
+param sqlServerNameOverride string = ''
+
 var tags = {
   application: 'life-insurance-crm'
   environment: environment
   managedBy: 'bicep'
 }
 
-var acrName = replace('${baseName}acr', '-', '')
+var resourceSuffix = uniqueString(subscription().id, resourceGroup().id)
+
+var acrName = !empty(acrNameOverride)
+  ? acrNameOverride
+  : take(replace('licrm${environment}${resourceSuffix}', '-', ''), 50)
+
+var sqlServerName = !empty(sqlServerNameOverride)
+  ? sqlServerNameOverride
+  : take('licrm-${environment}-sql-${resourceSuffix}', 63)
 
 // Key Vault names are globally unique. Use resource group ID (not name) so recreated RGs get a fresh vault name.
-var keyVaultName = take('licrm-${environment}-${uniqueString(subscription().id, resourceGroup().id)}', 24)
+var keyVaultName = take('licrm-${environment}-${resourceSuffix}', 24)
 
 module network 'modules/network.bicep' = {
   name: 'network-${environment}'
@@ -102,7 +116,7 @@ module acr 'modules/acr.bicep' = {
   name: 'acr-${environment}'
   params: {
     location: location
-    baseName: baseName
+    acrName: acrName
     tags: tags
   }
 }
@@ -124,6 +138,7 @@ module sql 'modules/sql.bicep' = {
   params: {
     location: location
     baseName: baseName
+    sqlServerName: sqlServerName
     tags: tags
     administratorLogin: sqlAdministratorLogin
     administratorLoginPassword: sqlAdministratorLoginPassword
@@ -169,6 +184,7 @@ module containerApps 'modules/containerapps.bicep' = {
     acrName: acrName
     containerImage: containerImage
     keyVaultUri: keyVault.outputs.keyVaultUri
+    keyVaultName: keyVaultName
     sqlServerFqdn: sql.outputs.sqlServerFqdn
     databaseName: sql.outputs.databaseName
     cpu: containerAppCpu
@@ -185,6 +201,8 @@ output acrName string = acrName
 output keyVaultUri string = keyVault.outputs.keyVaultUri
 output keyVaultName string = keyVaultName
 output sqlServerFqdn string = sql.outputs.sqlServerFqdn
+output sqlServerName string = sqlServerName
 output databaseName string = sql.outputs.databaseName
 output githubDeployClientId string = githubOidc.outputs.clientId
+output containerAppIdentityPrincipalId string = containerApps.outputs.apiIdentityPrincipalId
 output logAnalyticsWorkspaceId string = monitor.outputs.logAnalyticsWorkspaceId

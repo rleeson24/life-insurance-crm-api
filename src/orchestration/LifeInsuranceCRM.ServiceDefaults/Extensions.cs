@@ -1,4 +1,5 @@
 using Azure.Monitor.OpenTelemetry.AspNetCore;
+using LifeInsuranceCRM.Core.Config;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
@@ -85,8 +86,7 @@ public static class Extensions
         var healthChecks = builder.Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live", "ready"]);
 
-        var connectionString = builder.Configuration.GetConnectionString("LifeInsuranceCRM")
-            ?? builder.Configuration["Database:ConnectionString"];
+        var connectionString = DatabaseConnectionStringResolver.Resolve(builder.Configuration);
 
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
