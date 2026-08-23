@@ -166,14 +166,13 @@ Typical order:
 After deploying infra:
 
 1. Run [`scripts/grant-api-sql-access.ps1`](../scripts/grant-api-sql-access.ps1) to map the Container App identity to the SQL database.
-2. Optionally populate Key Vault secrets (`AzureAd--TenantId`, etc.) for a later Entra PR.
+2. Create Entra app registrations and Conditional Access policies, then store `AzureAd--*` secrets in Key Vault. See [`docs/security/entra-policies.md`](../docs/security/entra-policies.md).
 3. Deploy the API image via GitHub Actions.
 
 Infra grants the API managed identity **Key Vault Secrets User** and **AcrPull**. SQL still needs the one-time Entra database user script above.
 
 Remaining follow-ups:
 
-- Entra ID app registration values in Container App settings / Key Vault
 - Optional CMK for SQL TDE
 - Retire bootstrap SQL login once Entra-only admin is verified
 

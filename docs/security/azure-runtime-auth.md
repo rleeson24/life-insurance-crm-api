@@ -16,7 +16,7 @@ Startup order:
 3. Resolve the effective SQL connection string (`DatabaseConnectionStringResolver`).
 4. `DbExecutor` and `/health` use the resolved connection string unchanged.
 
-Key Vault secret names use `--` for hierarchy, e.g. `AzureAd--ClientId` → `AzureAd:ClientId` (for a later Entra PR).
+Key Vault secret names use `--` for hierarchy, e.g. `AzureAd--ClientId` → `AzureAd:ClientId`. Create the Entra app registrations and Conditional Access policies first — see [entra-policies.md](entra-policies.md).
 
 ## One-time Azure setup after infra deploy
 
@@ -54,10 +54,14 @@ Run as the SQL Entra administrator:
 
 This creates an Entra contained user mapped to the Container App identity and adds `db_datareader` / `db_datawriter`.
 
-### 4. (Optional) Store secrets in Key Vault
+### 4. Store Entra app settings in Key Vault
+
+After the API app registration exists ([entra-policies.md](entra-policies.md)):
 
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--TenantId" --value "<tenant-id>"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "<api-client-id>"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://life-insurance-crm"
 ```
 
 Redeploy or restart the Container App after adding secrets the API reads at startup.
