@@ -12,10 +12,18 @@
   <ItemGroup>
     <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.2" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" GeneratePathProperty="true" />
     <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
+    <!-- AspNetCore.OpenApi 10.x requires Microsoft.OpenApi 2.x. 3.x makes IOpenApiMediaType.Example read-only and breaks the XML comment source generator. -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.12.2" />
   </ItemGroup>
+
+  <!-- XML comments are not used for OpenAPI; the generator emits assignments that fail against Microsoft.OpenApi 3.x. -->
+  <Target Name="DisableCompileTimeOpenApiXmlGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="$(PkgMicrosoft_AspNetCore_OpenApi)/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\orchestration\LifeInsuranceCRM.ServiceDefaults\LifeInsuranceCRM.ServiceDefaults.csproj" />

@@ -8,6 +8,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    ignore:
+      # Microsoft.AspNetCore.OpenApi 10.x cannot use Microsoft.OpenApi 3.x (CS0200 on IOpenApiMediaType.Example).
+      - dependency-name: "Microsoft.OpenApi"
+        versions: [">=3.0.0"]
     groups:
       nuget-minor-patch:
         patterns: ["*"]
