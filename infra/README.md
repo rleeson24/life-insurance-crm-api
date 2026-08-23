@@ -89,7 +89,7 @@ Or create a one-off `.bicepparam` with the password filled in (do not commit):
 
 ```powershell
 Copy-Item infra/parameters/dev.bicepparam infra/parameters/dev.local.bicepparam
-# Edit dev.local.bicepparam: set param sqlAdministratorLoginPassword = 'YourStrongPasswordHere!'
+# Edit dev.local.bicepparam: set sqlAdministratorLoginPassword to a strong value (do not commit)
 
 az deployment group create `
   --resource-group rg-licrm-dev `

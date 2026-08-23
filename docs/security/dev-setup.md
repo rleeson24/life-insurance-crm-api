@@ -59,15 +59,16 @@ Restart the terminal after updating PATH.
 | Hook | Purpose |
 |------|---------|
 | **gitleaks** | Scans staged changes for hardcoded secrets (uses [`.gitleaks.toml`](../../.gitleaks.toml)) |
+| **detect-secrets** | Heuristic scan against [`.secrets.baseline`](../../.secrets.baseline); fails on new findings |
 | **detect-private-key** | Blocks PEM private keys |
 | **check-added-large-files** | Blocks accidental commits of files larger than 500 KB |
 
 ### Bypass (emergency only)
 
-To skip gitleaks for a single commit (requires justification and team awareness):
+To skip secret scanning for a single commit (requires justification and team awareness):
 
 ```bash
-SKIP=gitleaks git commit -m "your message"
+SKIP=gitleaks,detect-secrets git commit -m "your message"
 ```
 
 Do not use bypass for real credentials. Rotate any secret that was ever committed, even if the commit was amended or reverted.
@@ -85,3 +86,11 @@ If gitleaks reports a false positive:
 3. Avoid broad regexes that could hide actual leaks.
 
 Development GUIDs and Azure RBAC role definition IDs are already allowlisted.
+
+If **detect-secrets** reports a false positive, confirm it is not a real secret, then regenerate the baseline:
+
+```bash
+python -m detect_secrets scan --baseline .secrets.baseline
+```
+
+Review the diff in `.secrets.baseline` before committing it.

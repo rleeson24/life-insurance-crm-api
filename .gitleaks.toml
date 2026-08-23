@@ -3,7 +3,7 @@ title = "LifeInsuranceCRM gitleaks config"
 [extend]
 useDefault = true
 
-# v8.24.x (pre-commit) uses [allowlist] singular; [[allowlists]] is ignored until v8.25+.
+# v8.25+ supports [[allowlists]]; singular [allowlist] remains valid.
 [allowlist]
 description = "LifeInsuranceCRM false positives and public infrastructure identifiers"
 regexes = [
@@ -15,6 +15,7 @@ regexes = [
   '''8311e382-0749-4cb8-b61a-304f252e45ec''',
   '''b24988ac-6180-42a0-ab88-20f7382dd24c''',
   '''4633458b-17de-408a-b874-0445c86b69e6''',
+  '''605a6796-5cf0-4a61-80f0-ff2d484360ee''',
 ]
 
 [[rules]]
@@ -40,3 +41,9 @@ id = "jwt-token"
 description = "JSON Web Token"
 regex = '''eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
 keywords = ["eyJ"]
+
+[[rules]]
+id = "azure-subscription-id"
+description = "Hardcoded Azure subscription ID assignment"
+regex = '''(?i)(subscription[_-]?id|AZURE_SUBSCRIPTION_ID)\s*[:=]\s*['"]?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'''
+keywords = ["subscription", "AZURE_SUBSCRIPTION_ID"]
