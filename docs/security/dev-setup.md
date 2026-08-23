@@ -77,6 +77,16 @@ Do not use bypass for real credentials. Rotate any secret that was ever committe
 
 GitHub Actions runs the same gitleaks configuration on every push and pull request to `main`. CI catches issues if a developer commits without installing pre-commit locally.
 
+### Dependency scanning
+
+| Check | Where it runs | What it does |
+|-------|---------------|--------------|
+| **`dotnet list package --vulnerable`** | [CI](../../.github/workflows/ci.yml) `vulnerability-scan` job | Fails the PR if NuGet (direct or transitive) packages have known vulnerabilities |
+| **Dependabot** | [`.github/dependabot.yml`](../../.github/dependabot.yml) | Weekly version PRs for NuGet, Docker, and GitHub Actions; security PRs as advisories are published |
+| **CodeQL** (optional) | [`.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) | Static analysis for C# on push, PR, and a weekly schedule |
+
+Private repositories need [GitHub Advanced Security](https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security) for CodeQL results to upload. Disable the workflow without deleting it by setting the repository variable `ENABLE_CODEQL` to `false`.
+
 ### Adding allowlist entries
 
 If gitleaks reports a false positive:

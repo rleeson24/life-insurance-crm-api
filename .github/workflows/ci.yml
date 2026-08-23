@@ -20,6 +20,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
 
+  vulnerability-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore LifeInsuranceCRM.slnx
+
+      - name: Check for vulnerable NuGet packages
+        run: |
+          set -euo pipefail
+          dotnet list LifeInsuranceCRM.slnx package --vulnerable --include-transitive | tee nuget-vulnerable.txt
+          if grep -q 'has the following vulnerable packages' nuget-vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages detected. Update or replace the listed packages before merging."
+            exit 1
+          fi
+
   build-and-test:
     runs-on: ubuntu-latest
     defaults:

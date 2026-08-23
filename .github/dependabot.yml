@@ -1,0 +1,32 @@
+# Weekly dependency updates for NuGet, Docker, and GitHub Actions.
+# Security updates are created as soon as GitHub publishes an advisory.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /src
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      nuget-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      nuget-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /src
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ["*"]
