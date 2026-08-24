@@ -1,3 +1,4 @@
+using Azure.Core;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using LifeInsuranceCRM.Core.Config;
@@ -7,15 +8,29 @@ namespace LifeInsuranceCRM.API.Configuration;
 
 internal static class HostConfigurationExtensions
 {
-    public static void AddAzureKeyVaultConfiguration(this ConfigurationManager configuration)
+    public static void AddAzureKeyVaultConfiguration(
+        this ConfigurationManager configuration,
+        IHostEnvironment environment,
+        bool? managedIdentityAvailable = null)
     {
-        var vaultUri = configuration[$"{KeyVaultOptions.SectionName}:VaultUri"];
-        if (string.IsNullOrWhiteSpace(vaultUri))
+        var options = configuration.GetSection(KeyVaultOptions.SectionName).Get<KeyVaultOptions>()
+            ?? new KeyVaultOptions();
+
+        var decision = KeyVaultConfiguration.Evaluate(
+            options.VaultUri,
+            environment.EnvironmentName,
+            options.AllowLocalAccess,
+            managedIdentityAvailable ?? KeyVaultConfiguration.IsManagedIdentityAvailable());
+
+        decision.EnsureSuccess();
+        if (!decision.ShouldLoad || string.IsNullOrWhiteSpace(decision.VaultUri))
         {
             return;
         }
 
-        configuration.AddAzureKeyVault(new Uri(vaultUri), new DefaultAzureCredential());
+        configuration.AddAzureKeyVault(
+            new Uri(decision.VaultUri),
+            CreateCredential(decision.AllowDeveloperCredentials));
     }
 
     public static void ConfigureDatabaseOptions(this IServiceCollection services, IConfiguration configuration)
@@ -31,4 +46,17 @@ internal static class HostConfigurationExtensions
             }
         });
     }
+
+    private static TokenCredential CreateCredential(bool allowDeveloperCredentials) =>
+        allowDeveloperCredentials
+            ? new DefaultAzureCredential()
+            : new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ExcludeAzureCliCredential = true,
+                ExcludeAzureDeveloperCliCredential = true,
+                ExcludeAzurePowerShellCredential = true,
+                ExcludeInteractiveBrowserCredential = true,
+                ExcludeVisualStudioCredential = true,
+                ExcludeVisualStudioCodeCredential = true,
+            });
 }

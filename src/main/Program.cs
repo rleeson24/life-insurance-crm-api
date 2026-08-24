@@ -1,4 +1,3 @@
-using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using LifeInsuranceCRM.API.Auth;
 using LifeInsuranceCRM.API.Configuration;
 using LifeInsuranceCRM.API.Database;
@@ -18,7 +17,7 @@ using Microsoft.Identity.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddAzureKeyVaultConfiguration();
+builder.Configuration.AddAzureKeyVaultConfiguration(builder.Environment);
 builder.AddServiceDefaults();
 
 AddConfigurationOptions(builder);
