@@ -104,3 +104,20 @@ python -m detect_secrets scan --baseline .secrets.baseline
 ```
 
 Review the diff in `.secrets.baseline` before committing it.
+
+## Local configuration (no production Key Vault)
+
+Daily development does **not** use Azure Key Vault:
+
+| Source | What it provides |
+|--------|------------------|
+| Aspire AppHost | `ConnectionStrings:LifeInsuranceCRM` |
+| `appsettings.Development.json` | Synthetic auth, CORS origin |
+| User secrets (`UserSecretsId` `life-insurance-crm-api-dev`) | Any local overrides |
+
+```powershell
+cd src/main
+dotnet user-secrets set "AzureAd:TenantId" "<dev-tenant-id>"
+```
+
+Leave `KeyVault:VaultUri` empty. The API skips Key Vault in Development unless you explicitly set `KeyVault:AllowLocalAccess` after JIT/PIM (see [azure-runtime-auth.md](azure-runtime-auth.md)). Never point a laptop at the production vault for routine work.

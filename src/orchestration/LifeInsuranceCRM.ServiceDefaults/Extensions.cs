@@ -73,9 +73,11 @@ public static class Extensions
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
-        if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+        var appInsightsConnectionString = ApplicationInsightsConnectionStringResolver.Resolve(builder.Configuration);
+        if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
         {
-            builder.Services.AddOpenTelemetry().UseAzureMonitor();
+            builder.Services.AddOpenTelemetry().UseAzureMonitor(options =>
+                options.ConnectionString = appInsightsConnectionString);
         }
 
         return builder;
