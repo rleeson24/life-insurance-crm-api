@@ -5,12 +5,15 @@ using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Constants;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace LifeInsuranceCRM.API.Middleware;
 
 public sealed class ActorResolutionMiddleware
 {
+    private const string ObjectIdClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+
     private readonly RequestDelegate _next;
 
     public ActorResolutionMiddleware(RequestDelegate next)
@@ -24,56 +27,63 @@ public sealed class ActorResolutionMiddleware
         IOrganizationUserRepository organizationUserRepository,
         IAuthSecurityEventRecorder securityEventRecorder,
         IProblemDetailsFactory problemDetailsFactory,
-        IOptions<AuthOptions> authOptions)
+        IOptions<AuthOptions> authOptions,
+        IConfiguration configuration)
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var userIdClaim = context.User.FindFirstValue("oid")
-                ?? context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (Guid.TryParse(userIdClaim, out var userId))
+            if (!TryGetEntraObjectId(context.User, out var userId))
             {
-                var email = context.User.FindFirstValue(ClaimTypes.Email)
-                    ?? context.User.FindFirstValue("preferred_username");
-
-                var userContext = await organizationUserRepository.GetUserContextAsync(
-                    userId,
-                    context.RequestAborted);
-
-                if (userContext is null)
-                {
-                    await WriteForbiddenAsync(
-                        context,
-                        problemDetailsFactory,
-                        securityEventRecorder,
-                        AuthSecurityEventTypes.TenantAccessDenied,
-                        "Tenant not found for user",
-                        cancellationToken: context.RequestAborted);
-                    return;
-                }
-
-                if (!userContext.IsActive)
-                {
-                    await WriteForbiddenAsync(
-                        context,
-                        problemDetailsFactory,
-                        securityEventRecorder,
-                        AuthSecurityEventTypes.Forbidden,
-                        "User account is inactive",
-                        cancellationToken: context.RequestAborted);
-                    return;
-                }
-
-                var tenantId = authOptions.Value.UseDevelopmentAuthentication
-                    ? authOptions.Value.DevelopmentTenantId
-                    : userContext.TenantId;
-
-                actorTracker.SetActor(userId, email, tenantId, userContext.Role);
-                await securityEventRecorder.RecordAsync(
-                    AuthSecurityEventTypes.TenantResolved,
-                    success: true,
+                await WriteForbiddenAsync(
+                    context,
+                    problemDetailsFactory,
+                    securityEventRecorder,
+                    AuthSecurityEventTypes.TenantAccessDenied,
+                    "Token is missing a GUID oid claim. NameIdentifier/sub on personal Microsoft accounts is not a user id.",
                     cancellationToken: context.RequestAborted);
+                return;
             }
+
+            var email = context.User.FindFirstValue(ClaimTypes.Email)
+                ?? context.User.FindFirstValue("preferred_username");
+
+            var userContext = await organizationUserRepository.GetUserContextAsync(
+                userId,
+                context.RequestAborted);
+
+            if (userContext is null)
+            {
+                await WriteForbiddenAsync(
+                    context,
+                    problemDetailsFactory,
+                    securityEventRecorder,
+                    AuthSecurityEventTypes.TenantAccessDenied,
+                    "Tenant not found for user",
+                    cancellationToken: context.RequestAborted);
+                return;
+            }
+
+            if (!userContext.IsActive)
+            {
+                await WriteForbiddenAsync(
+                    context,
+                    problemDetailsFactory,
+                    securityEventRecorder,
+                    AuthSecurityEventTypes.Forbidden,
+                    "User account is inactive",
+                    cancellationToken: context.RequestAborted);
+                return;
+            }
+
+            var tenantId = authOptions.Value.ShouldUseDevelopmentScheme(configuration)
+                ? authOptions.Value.DevelopmentTenantId
+                : userContext.TenantId;
+
+            actorTracker.SetActor(userId, email, tenantId, userContext.Role);
+            await securityEventRecorder.RecordAsync(
+                AuthSecurityEventTypes.TenantResolved,
+                success: true,
+                cancellationToken: context.RequestAborted);
         }
 
         try
@@ -84,6 +94,27 @@ public sealed class ActorResolutionMiddleware
         {
             actorTracker.Clear();
         }
+    }
+
+    internal static bool TryGetEntraObjectId(ClaimsPrincipal user, out Guid userId)
+    {
+        string?[] candidates =
+        [
+            user.FindFirstValue("oid"),
+            user.FindFirstValue(ObjectIdClaimType),
+            user.FindFirstValue(ClaimTypes.NameIdentifier),
+        ];
+
+        foreach (var candidate in candidates)
+        {
+            if (Guid.TryParse(candidate, out userId))
+            {
+                return true;
+            }
+        }
+
+        userId = default;
+        return false;
     }
 
     private static async Task WriteForbiddenAsync(

@@ -103,7 +103,7 @@ void AddAuthentication(WebApplicationBuilder webBuilder)
 
     var authenticationBuilder = webBuilder.Services.AddAuthentication();
 
-    if (authOptions.UseDevelopmentAuthentication)
+    if (authOptions.ShouldUseDevelopmentScheme(webBuilder.Configuration))
     {
         authenticationBuilder
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
@@ -121,6 +121,11 @@ void AddAuthentication(WebApplicationBuilder webBuilder)
         webBuilder.Services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddMicrosoftIdentityWebApi(webBuilder.Configuration.GetSection("AzureAd"));
+
+        webBuilder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+        {
+            options.MapInboundClaims = false;
+        });
     }
 
     webBuilder.Services.AddAuthorization(options =>

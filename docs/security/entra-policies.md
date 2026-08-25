@@ -1,6 +1,6 @@
 # Entra ID, MFA, and GitHub access policies
 
-MFA and Conditional Access are **tenant settings**, not application code. The API validates Entra JWTs when `Auth:UseDevelopmentAuthentication` is `false` (`AddMicrosoftIdentityWebApi` in `Program.cs`). Local Aspire development keeps the synthetic auth handler.
+MFA and Conditional Access are **tenant settings**, not application code. The API validates Entra JWTs when `AzureAd:ClientId` and `AzureAd:TenantId` are set (`AddMicrosoftIdentityWebApi` in `Program.cs`). Local Aspire without those values still uses the synthetic development scheme so tests and first-run stay unblocked. With Entra configured locally, the SPA and API both use MSAL / JWT.
 
 **License:** Conditional Access requires [Microsoft Entra ID P1](https://learn.microsoft.com/entra/identity/conditional-access/overview) (or P2 / Microsoft 365 E3+). If the tenant still uses **Security defaults**, turn those off only after the named policies below are on — both cannot be active at once.
 
@@ -86,7 +86,7 @@ Entra admin center → **App registrations** → **New registration**.
      - Admin consent display name: `Access LifeInsuranceCRM API`
      - User consent display name: `Access the CRM as you`
 2. **Token configuration** → optional claims on the **Access** token: `email`, `preferred_username`.  
-   `ActorResolutionMiddleware` maps `oid` (always present) to `OrganizationUsers.UserId`, and email from `email` or `preferred_username`.
+   `ActorResolutionMiddleware` maps **`oid`** (or the mapped `http://schemas.microsoft.com/identity/claims/objectidentifier`) to `OrganizationUsers.UserId`, and email from `email` or `preferred_username`. Do **not** use `sub` / `NameIdentifier`: on personal Microsoft accounts that value is a pairwise opaque string (not a GUID) and cannot be stored as `UserId`. JWT Bearer `MapInboundClaims` is off so `oid` stays `oid`.
 3. **Authentication**: no SPA or public-client platform on this app. Implicit grant stays **off**.
 4. Copy **Application (client) ID** and **Directory (tenant) ID**.
 
@@ -119,20 +119,27 @@ Restart the Container App so it reloads configuration. Runtime wiring is in [azu
 4. **API permissions** → **Add a permission** → **My APIs** → `LifeInsuranceCRM-API` → delegated `access_as_user` → **Grant admin consent**.
 5. No client secret. No certificates.
 
-MSAL in the client (phase 3.3) will use:
+MSAL uses:
 
 | Value | Source |
 |-------|--------|
-| SPA client ID | SPA application (client) ID |
-| Tenant ID | Same directory as the API |
-| API scope | `api://life-insurance-crm/access_as_user` |
-| Redirect URI | Must match a URI registered above |
+| SPA client ID | `VITE_AZURE_AD_CLIENT_ID` |
+| Tenant ID | `VITE_AZURE_AD_TENANT_ID` |
+| API scope | `VITE_AZURE_AD_API_SCOPE` (default `api://life-insurance-crm/access_as_user`) |
+| Redirect URI | Current origin plus `/` (must match a URI registered above) |
 
-Until MSAL is wired, `life-insurance-crm-client/src/src/auth/auth.ts` remains a placeholder and local runs use development authentication.
+Local: copy `src/.env.example` to `src/.env.local` (gitignored). The API validates the same Entra tokens when `AzureAd:ClientId` and `AzureAd:TenantId` are set (user secrets locally, Key Vault in Azure); otherwise it keeps the synthetic development scheme.
+
+```powershell
+cd src/main
+dotnet user-secrets set "AzureAd:TenantId" "<tenant-id>"
+dotnet user-secrets set "AzureAd:ClientId" "<api-client-id>"
+dotnet user-secrets set "AzureAd:Audience" "api://life-insurance-crm"
+```
 
 ### User provisioning
 
-JWT `oid` must match `OrganizationUsers.UserId` or the API returns 403 (`TenantAccessDenied`). After a person is created in Entra:
+JWT **`oid`** (the Entra object ID GUID) must match `OrganizationUsers.UserId` or the API returns 403 (`TenantAccessDenied`). Copy Object ID from Entra admin center → Users, not from `NameIdentifier` / `sub` in a decoded token. After a person is created in Entra:
 
 1. Copy their **Object ID**.
 2. Insert an `OrganizationUsers` row for the correct `TenantId` with that `UserId`, email, display name, and role.

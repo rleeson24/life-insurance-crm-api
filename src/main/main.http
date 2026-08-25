@@ -1,8 +1,8 @@
 # LifeInsuranceCRM.API — local requests
-# Standalone: dotnet run --project main/LifeInsuranceCRM.API.csproj (http profile → port 5069)
+# Standalone: dotnet run --project main/LifeInsuranceCRM.API.csproj (https profile → port 7114)
 # Aspire: use the API endpoint URL from the Aspire dashboard (port varies)
 
-@main_HostAddress = http://localhost:5069
+@main_HostAddress = https://localhost:7114
 
 ### Health — readiness
 GET {{main_HostAddress}}/health

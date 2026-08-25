@@ -8,6 +8,7 @@ using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -50,7 +51,8 @@ public class ActorResolutionMiddlewareTests
             organizationUserRepository.Object,
             securityEventRecorder.Object,
             problemDetailsFactory,
-            authOptions);
+            authOptions,
+            new ConfigurationBuilder().Build());
 
         Assert.False(invoked);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
@@ -93,22 +95,92 @@ public class ActorResolutionMiddlewareTests
             organizationUserRepository.Object,
             securityEventRecorder.Object,
             problemDetailsFactory,
-            authOptions);
+            authOptions,
+            new ConfigurationBuilder().Build());
 
         Assert.True(invoked);
         Assert.Equal(OrganizationRoles.Agent, capturedRole);
         Assert.Equal(_tenantId, capturedTenantId);
     }
 
-    private DefaultHttpContext CreateAuthenticatedContext()
+    [Fact]
+    public async Task InvokeAsync_WhenOidAndPairwiseSub_UsesOid()
     {
-        var context = new DefaultHttpContext();
-        var identity = new ClaimsIdentity(
+        var context = CreateAuthenticatedContext(
+            new Claim("oid", _userId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, "WndTH1yWknoQ8QDJwLHJJ7vKrB7wNeQ0DXCvfVR5Jf8"),
+            new Claim(ClaimTypes.Email, "dev-user@localhost"));
+        var actorTracker = new LifeInsuranceCRM.API.Auth.ActorTracker();
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        organizationUserRepository
+            .Setup(r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationUserContext(_tenantId, OrganizationRoles.Admin, IsActive: true));
+
+        var invoked = false;
+        RequestDelegate next = _ =>
+        {
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        await new ActorResolutionMiddleware(next).InvokeAsync(
+            context,
+            actorTracker,
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
+            new ConfigurationBuilder().Build());
+
+        Assert.True(invoked);
+        organizationUserRepository.Verify(
+            r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenPairwiseNameIdentifierOnly_Returns403()
+    {
+        var context = CreateAuthenticatedContext(
+            new Claim(ClaimTypes.NameIdentifier, "WndTH1yWknoQ8QDJwLHJJ7vKrB7wNeQ0DXCvfVR5Jf8"),
+            new Claim(ClaimTypes.Email, "dev-user@localhost"));
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+
+        var invoked = false;
+        RequestDelegate next = _ =>
+        {
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        await new ActorResolutionMiddleware(next).InvokeAsync(
+            context,
+            new LifeInsuranceCRM.API.Auth.ActorTracker(),
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions()),
+            new ConfigurationBuilder().Build());
+
+        Assert.False(invoked);
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+        organizationUserRepository.Verify(
+            r => r.GetUserContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    private static DefaultHttpContext CreateAuthenticatedContext(params Claim[] claims)
+    {
+        var identityClaims = claims.Length == 0
+            ?
             [
-                new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, "11111111-1111-1111-1111-111111111111"),
                 new Claim(ClaimTypes.Email, "dev-user@localhost"),
-            ],
-            authenticationType: "Development");
+            ]
+            : claims;
+
+        var context = new DefaultHttpContext();
+        var identity = new ClaimsIdentity(identityClaims, authenticationType: "Development");
         context.User = new ClaimsPrincipal(identity);
         context.Response.Body = new MemoryStream();
         return context;
