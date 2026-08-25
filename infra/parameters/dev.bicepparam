@@ -12,7 +12,7 @@ param githubClientRepository = 'life-insurance-crm-client'
 param sqlAdministratorLogin = 'sqladmin'
 // Set at deploy time via deploy-infra-dev.ps1 (password embedded in temp .bicepparam)
 param sqlAdministratorLoginPassword = ''
-param sqlAzureAdAdministratorObjectId = ''
+param sqlAzureAdAdministratorObjectId = 'e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'
 // Entra object ID of the operator who sets vault secrets (az ad signed-in-user show --query id -o tsv).
 param keyVaultSecretsOfficerPrincipalId = 'e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'
 
