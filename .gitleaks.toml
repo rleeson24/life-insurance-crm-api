@@ -15,25 +15,31 @@ regexes = [
   '''8311e382-0749-4cb8-b61a-304f252e45ec''',
   '''b24988ac-6180-42a0-ab88-20f7382dd24c''',
   '''4633458b-17de-408a-b874-0445c86b69e6''',
+  '''b86a8fe4-44ce-4948-aee5-eccb2c155cd7''',
+  '''acdd72a7-3385-48ef-bd42-f606fba81ae7''',
   '''605a6796-5cf0-4a61-80f0-ff2d484360ee''',
+  '''e1da25de-af92-4e5c-a9ac-1bc186bb9a4f''',
 ]
+
+# Gitleaks treats the first capturing group as the secret. Keywords must be
+# non-capturing (?:...) so allowlists match the value, not the variable name.
 
 [[rules]]
 id = "azure-sql-connection-string-password"
 description = "Azure SQL or SQL Server connection string with password"
-regex = '''(?i)(Server=tcp:[^\s'"]+|Data Source=[^\s'"]+).*(Password|Pwd)=[^;'"\s]+'''
+regex = '''(?i)(?:Server=tcp:[^\s'"]+|Data Source=[^\s'"]+).*(?:Password|Pwd)=([^;'"\s]+)'''
 keywords = ["Password=", "Pwd="]
 
 [[rules]]
 id = "azure-storage-account-key"
 description = "Azure Storage account key"
-regex = '''(?i)AccountKey\s*=\s*[A-Za-z0-9+/=]{40,}'''
+regex = '''(?i)AccountKey\s*=\s*([A-Za-z0-9+/=]{40,})'''
 keywords = ["AccountKey"]
 
 [[rules]]
 id = "azure-client-secret"
 description = "Azure AD or OAuth client secret assignment"
-regex = '''(?i)(client[_-]?secret|ClientSecret)\s*[:=]\s*['"]?[A-Za-z0-9~._\-]{8,}'''
+regex = '''(?i)(?:client[_-]?secret|ClientSecret)\s*[:=]\s*['"]?([A-Za-z0-9~._\-]{8,})'''
 keywords = ["client_secret", "ClientSecret", "client-secret"]
 
 [[rules]]
@@ -45,5 +51,5 @@ keywords = ["eyJ"]
 [[rules]]
 id = "azure-subscription-id"
 description = "Hardcoded Azure subscription ID assignment"
-regex = '''(?i)(subscription[_-]?id|AZURE_SUBSCRIPTION_ID)\s*[:=]\s*['"]?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'''
+regex = '''(?i)(?:subscription[_-]?id|AZURE_SUBSCRIPTION_ID)\s*[:=]\s*['"]?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'''
 keywords = ["subscription", "AZURE_SUBSCRIPTION_ID"]

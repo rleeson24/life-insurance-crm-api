@@ -16,6 +16,14 @@ param memory string
 param minReplicas int
 param maxReplicas int
 
+@description('Browser origins allowed to call the API (Static Web App URL and optional extras).')
+param corsAllowedOrigins array = []
+
+var corsEnv = [for (origin, i) in corsAllowedOrigins: {
+  name: 'Cors__AllowedOrigins__${i}'
+  value: origin
+}]
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: split(logAnalyticsWorkspaceId, '/')[8]
 }
@@ -109,28 +117,35 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
               periodSeconds: 15
             }
           ]
-          env: [
-            {
-              name: 'ASPNETCORE_ENVIRONMENT'
-              value: 'Production'
-            }
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              value: applicationInsightsConnectionString
-            }
-            {
-              name: 'Database__Server'
-              value: sqlServerFqdn
-            }
-            {
-              name: 'Database__Name'
-              value: databaseName
-            }
-            {
-              name: 'KeyVault__VaultUri'
-              value: keyVaultUri
-            }
-          ]
+          env: concat(
+            [
+              {
+                name: 'ASPNETCORE_ENVIRONMENT'
+                value: 'Production'
+              }
+              {
+                name: 'AllowedHosts'
+                value: '*'
+              }
+              {
+                name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+                value: applicationInsightsConnectionString
+              }
+              {
+                name: 'Database__Server'
+                value: sqlServerFqdn
+              }
+              {
+                name: 'Database__Name'
+                value: databaseName
+              }
+              {
+                name: 'KeyVault__VaultUri'
+                value: keyVaultUri
+              }
+            ],
+            corsEnv
+          )
         }
       ]
       scale: {

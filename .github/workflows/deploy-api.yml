@@ -39,10 +39,15 @@ jobs:
       - name: Resolve Azure resources
         id: azure
         run: |
-          BASE_NAME="licrm-${{ inputs.environment }}"
-          ACR_NAME="${BASE_NAME//-/}acr"
-          ACR_LOGIN_SERVER="$(az acr show --name "$ACR_NAME" --resource-group "${{ inputs.resourceGroup }}" --query loginServer -o tsv)"
-          CONTAINER_APP_NAME="${BASE_NAME}-api"
+          set -euo pipefail
+          RG="${{ inputs.resourceGroup }}"
+          ACR_NAME="$(az acr list --resource-group "$RG" --query "[0].name" -o tsv)"
+          ACR_LOGIN_SERVER="$(az acr show --name "$ACR_NAME" --resource-group "$RG" --query loginServer -o tsv)"
+          CONTAINER_APP_NAME="$(az containerapp list --resource-group "$RG" --query "[?contains(name, '-api')].name | [0]" -o tsv)"
+          if [ -z "$ACR_NAME" ] || [ -z "$CONTAINER_APP_NAME" ]; then
+            echo "Could not find ACR or Container App in $RG. Deploy infrastructure first."
+            exit 1
+          fi
           echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
           echo "container_app_name=$CONTAINER_APP_NAME" >> "$GITHUB_OUTPUT"
@@ -57,9 +62,16 @@ jobs:
             src
           docker push "${{ steps.azure.outputs.image_tag }}"
 
-      - name: Update Container App
+      - name: Update Container App (image digest)
         run: |
+          set -euo pipefail
+          DIGEST="$(az acr repository show \
+            --name "${{ steps.azure.outputs.acr_name }}" \
+            --image "${{ env.IMAGE_NAME }}:${GITHUB_SHA}" \
+            --query digest -o tsv)"
+          IMAGE_DIGEST="${{ steps.azure.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}@${DIGEST}"
+          echo "Deploying $IMAGE_DIGEST"
           az containerapp update \
             --name "${{ steps.azure.outputs.container_app_name }}" \
             --resource-group "${{ inputs.resourceGroup }}" \
-            --image "${{ steps.azure.outputs.image_tag }}"
+            --image "$IMAGE_DIGEST"

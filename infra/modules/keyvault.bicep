@@ -5,6 +5,9 @@ param enablePurgeProtection bool
 param tags object
 param privateEndpointSubnetId string
 
+@description('Entra object ID of a user or group that may list, read, and write vault secrets (data plane). Resource group Owner/Contributor does not grant this.')
+param secretsOfficerPrincipalId string = ''
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
@@ -68,6 +71,20 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
         }
       }
     ]
+  }
+}
+
+// Key Vault RBAC data plane is separate from control plane. Owner on the RG cannot
+// list or set secrets. Secrets Officer is the human/operator role; the API identity
+// gets Secrets User in containerapps.bicep.
+var keyVaultSecretsOfficerRoleId = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
+
+resource secretsOfficerAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(secretsOfficerPrincipalId)) {
+  name: guid(keyVault.id, secretsOfficerPrincipalId, keyVaultSecretsOfficerRoleId)
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
+    principalId: secretsOfficerPrincipalId
   }
 }
 

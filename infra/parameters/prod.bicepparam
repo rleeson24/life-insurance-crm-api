@@ -4,9 +4,11 @@ param environment = 'prod'
 param location = 'centralus'
 param githubOwner = 'rleeson24'
 param githubRepository = 'life-insurance-crm-api'
+param githubClientRepository = 'life-insurance-crm-client'
 param sqlAdministratorLogin = 'sqladmin'
 param sqlAdministratorLoginPassword = ''
 param sqlAzureAdAdministratorObjectId = ''
+param keyVaultSecretsOfficerPrincipalId = ''
 param containerImage = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
 // Minimal prod sizing — one small always-on replica; bump sqlSkuName/sqlSkuTier to S0/Standard when Basic is too small
@@ -19,3 +21,5 @@ param sqlSkuTier = 'Basic'
 param logAnalyticsRetentionInDays = 30
 param enableSqlAuditing = true
 param enableSqlDiagnostics = true
+param sqlBackupStorageRedundancy = 'Geo'
+param enableSqlLongTermRetention = true

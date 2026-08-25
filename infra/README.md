@@ -3,12 +3,15 @@
 Modular Bicep for LifeInsuranceCRM on Azure:
 
 - VNet with Container Apps and private endpoint subnets
-- Azure SQL (no public endpoint, private link, TDE, auditing)
+- Azure SQL (no public endpoint, private link, TDE, auditing; Geo backups + long-term retention in prod)
 - Key Vault (RBAC, soft delete, private endpoint)
 - Azure Container Registry (admin disabled)
 - Container Apps Environment + API app (managed identity, health probes)
+- Azure Static Web Apps for the Vite SPA (CORS origin wired into the API)
 - Log Analytics + Application Insights
-- GitHub Actions OIDC deploy identity (no long-lived SP secrets)
+- GitHub Actions OIDC identities for **both** repos (API deploy vs client deploy; no long-lived SP secrets)
+
+Infra **provisions and wires** the API and the client. Each GitHub repo **deploys its own app** into that platform.
 
 ## Layout
 
@@ -22,7 +25,9 @@ infra/
     keyvault.bicep
     sql.bicep
     containerapps.bicep
+    staticwebapp.bicep
     github-oidc.bicep
+    github-client-oidc.bicep
     role-assignment.bicep
   parameters/
     dev.bicepparam
@@ -41,7 +46,9 @@ Sizing is parameterized per environment. Defaults target the **lowest viable com
 | Container App replicas | 0–1 (scale to zero when idle) | 1–2 (always at least one) |
 | Azure SQL | Serverless GP_S_Gen5 (auto-pause after 60 min idle) | Basic (~$5/mo; bump to S0/Standard when needed) |
 | ACR | Basic | Basic |
+| Static Web App | Free | Free |
 | Log Analytics retention | 30 days (PerGB2018 minimum) | 30 days |
+| SQL backups | Local redundancy, no LTR | Geo redundancy + 4 weeks / 12 months / 5 years LTR |
 | SQL auditing / diagnostics | Off (saves ingestion) | On |
 
 Override any value in `infra/parameters/*.bicepparam` or at deploy time, e.g. `--parameters sqlSkuName=S0 sqlSkuTier=Standard`.
@@ -101,8 +108,10 @@ Remove-Item infra/parameters/dev.local.bicepparam
 
 After deploy, note outputs:
 
-- `githubDeployClientId` — federated identity client ID for GitHub Actions
+- `githubDeployClientId` — federated identity client ID for the **API** GitHub repo
+- `githubClientDeployClientId` — federated identity client ID for the **client** GitHub repo
 - `acrLoginServer`, `containerAppFqdn`, `keyVaultUri`, `keyVaultName`, `sqlServerFqdn`
+- `clientOrigin`, `clientRedirectUri`, `staticWebAppName` — SPA URL and Entra redirect URI
 
 ### Key Vault name already in use (`VaultAlreadyExists`)
 
@@ -133,7 +142,9 @@ az resource list --resource-group rg-licrm-dev -o table
 
 ## GitHub Actions setup
 
-Create a GitHub **environment** matching the target (`dev` or `prod`) and configure secrets:
+Create a GitHub **environment** matching the target (`dev` or `prod`) in **each** repository and configure secrets:
+
+**API repo** (`life-insurance-crm-api`):
 
 | Secret | Source |
 |--------|--------|
@@ -142,22 +153,37 @@ Create a GitHub **environment** matching the target (`dev` or `prod`) and config
 | `AZURE_SUBSCRIPTION_ID` | `az account show --query id -o tsv` |
 | `SQL_ADMIN_PASSWORD` | Strong bootstrap password (infra deploy only) |
 
+To keep Key Vault secret access after GitHub redeploys, set `keyVaultSecretsOfficerPrincipalId` in `infra/parameters/<env>.bicepparam` to your Entra object ID (`az ad signed-in-user show --query id -o tsv`). That value is not a secret. Until it is set, run [`scripts/grant-keyvault-secrets-officer.ps1`](../scripts/grant-keyvault-secrets-officer.ps1) once on the live vault.
+
+**Client repo** (`life-insurance-crm-client`):
+
+| Secret | Source |
+|--------|--------|
+| `AZURE_CLIENT_ID` | Bicep output `githubClientDeployClientId` (not the API identity) |
+| `AZURE_TENANT_ID` | Same tenant as above |
+| `AZURE_SUBSCRIPTION_ID` | Same subscription as above |
+
 The GitHub **environment** name (`dev` or `prod`) must match the workflow input and the OIDC federated credential.
 
 ### Workflows
 
-| Workflow | Purpose |
-|----------|---------|
-| [`deploy-infrastructure.yml`](../.github/workflows/deploy-infrastructure.yml) | Manual Bicep deploy / update |
-| [`deploy-api.yml`](../.github/workflows/deploy-api.yml) | Build Docker image, push to ACR, update Container App |
+| Workflow | Repo | Purpose |
+|----------|------|---------|
+| [`deploy-infrastructure.yml`](../.github/workflows/deploy-infrastructure.yml) | API | Manual Bicep deploy / update of the whole platform |
+| [`deploy-api.yml`](../.github/workflows/deploy-api.yml) | API | Build Docker image, push to ACR by digest, update Container App |
+| `deploy-client.yml` | Client | Build Vite SPA, upload to the provisioned Static Web App |
 
-Both use OIDC (`azure/login@v2`) — no client secrets in GitHub.
+Both deploy workflows use OIDC (`azure/login@v2`) — no client secrets in GitHub. The client identity can update the Static Web App and read the API FQDN; it cannot change SQL, Key Vault, or the Container App image.
 
 Typical order:
 
-1. Run **Deploy infrastructure** for the environment
-2. Configure GitHub environment secrets from deployment outputs
-3. Run **Deploy API** to push the real API image (replaces the placeholder hello-world image)
+1. Run **Deploy infrastructure** from the API repo
+2. Configure GitHub environment secrets in **both** repos from deployment outputs
+3. Add `clientRedirectUri` to the Entra SPA registration (see [`docs/security/entra-policies.md`](../docs/security/entra-policies.md))
+4. Run **Deploy API** to push the real API image
+5. Run **Deploy client** from the client repo (sets `VITE_API_BASE_URL` from the API FQDN)
+
+Bicep sets API `Cors:AllowedOrigins` to `clientOrigin` so the SPA can call the API once both apps are deployed.
 
 ## Security notes
 
@@ -166,10 +192,10 @@ Typical order:
 After deploying infra:
 
 1. Run [`scripts/grant-api-sql-access.ps1`](../scripts/grant-api-sql-access.ps1) to map the Container App identity to the SQL database.
-2. Create Entra app registrations and Conditional Access policies, then store `AzureAd--*` secrets in Key Vault. See [`docs/security/entra-policies.md`](../docs/security/entra-policies.md).
+2. Run [`scripts/grant-keyvault-secrets-officer.ps1`](../scripts/grant-keyvault-secrets-officer.ps1) so you can set vault secrets (RG Owner is not enough). Then create Entra app registrations and store `AzureAd--*` secrets. See [`docs/security/entra-policies.md`](../docs/security/entra-policies.md) and [`docs/security/azure-runtime-auth.md`](../docs/security/azure-runtime-auth.md).
 3. Deploy the API image via GitHub Actions.
 
-Infra grants the API managed identity **Key Vault Secrets User** and **AcrPull**. SQL still needs the one-time Entra database user script above.
+Infra grants the API managed identity **Key Vault Secrets User** (read) and **AcrPull**. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
 
 Remaining follow-ups:
 
