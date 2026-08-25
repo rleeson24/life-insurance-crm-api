@@ -66,15 +66,13 @@ Set `sqlAzureAdAdministratorObjectId` in your `.bicepparam` to an Entra user or 
 
 ### 3. Grant the API managed identity access to the database
 
-Run as the SQL Entra administrator:
+Run as the SQL Entra administrator (the script sets you as Entra admin if none exists, then creates the database user):
 
 ```powershell
-.\scripts\grant-api-sql-access.ps1 `
-  -ResourceGroup rg-licrm-dev `
-  -SqlServer <sqlServerName from deploy output> `
-  -Database LifeInsuranceCRM `
-  -ContainerAppName licrm-dev-api
+.\scripts\grant-api-sql-access.ps1 -ResourceGroup rg-licrm-dev
 ```
+
+If the SQL server is private-endpoint only, the script temporarily enables public access from your IP, runs T-SQL, then turns public access off again.
 
 This creates an Entra contained user mapped to the Container App identity and adds `db_datareader` / `db_datawriter`.
 
