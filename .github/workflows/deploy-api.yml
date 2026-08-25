@@ -71,6 +71,11 @@ jobs:
             --query digest -o tsv)"
           IMAGE_DIGEST="${{ steps.azure.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}@${DIGEST}"
           echo "Deploying $IMAGE_DIGEST"
+          az containerapp registry set \
+            --name "${{ steps.azure.outputs.container_app_name }}" \
+            --resource-group "${{ inputs.resourceGroup }}" \
+            --server "${{ steps.azure.outputs.acr_login_server }}" \
+            --identity system
           az containerapp update \
             --name "${{ steps.azure.outputs.container_app_name }}" \
             --resource-group "${{ inputs.resourceGroup }}" \

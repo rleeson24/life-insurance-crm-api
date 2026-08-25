@@ -79,12 +79,15 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      registries: startsWith(containerImage, acrLoginServer) ? [
+      // Always register ACR + system identity. The first image is often the MCR
+      // hello-world placeholder; omitting this leaves later `az containerapp update
+      // --image` pulls unauthorized (ACR admin is disabled).
+      registries: [
         {
           server: acrLoginServer
           identity: 'system'
         }
-      ] : []
+      ]
     }
     template: {
       containers: [
