@@ -41,6 +41,16 @@ $localParamsPath = Join-Path $repoRoot 'infra/parameters/dev.local.bicepparam'
 $escapedPassword = $plainPassword -replace "'", "''"
 $paramContent = Get-Content -Path $baseParamsPath -Raw
 $paramContent = $paramContent -replace "param sqlAdministratorLoginPassword = ''", "param sqlAdministratorLoginPassword = '$escapedPassword'"
+
+if ($paramContent -match "param keyVaultSecretsOfficerPrincipalId = ''") {
+    $officerId = az ad signed-in-user show --query id -o tsv
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($officerId)) {
+        throw "Could not resolve the signed-in user's object ID. Set keyVaultSecretsOfficerPrincipalId in infra/parameters/dev.bicepparam."
+    }
+    Write-Host "Granting Key Vault Secrets Officer to signed-in user $officerId"
+    $paramContent = $paramContent -replace "param keyVaultSecretsOfficerPrincipalId = ''", "param keyVaultSecretsOfficerPrincipalId = '$officerId'"
+}
+
 Set-Content -Path $localParamsPath -Value $paramContent -Encoding utf8 -NoNewline
 
 try {

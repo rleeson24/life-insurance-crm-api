@@ -16,8 +16,33 @@ param baseName string = 'licrm-${environment}'
 @description('GitHub organization or user that runs deploy workflows.')
 param githubOwner string
 
-@description('GitHub repository name for OIDC federation.')
+@description('GitHub repository that deploys the API (OIDC federation).')
 param githubRepository string
+
+@description('GitHub repository that deploys the SPA (OIDC federation).')
+param githubClientRepository string = 'life-insurance-crm-client'
+
+@description('Extra browser origins allowed to call the API, in addition to the Static Web App URL.')
+param additionalCorsOrigins array = []
+
+@description('SQL backup storage redundancy. Local for cheap dev; Geo for prod.')
+@allowed([
+  'Local'
+  'Zone'
+  'Geo'
+  'GeoZone'
+])
+param sqlBackupStorageRedundancy string = environment == 'prod' ? 'Geo' : 'Local'
+
+@description('Enable SQL long-term backup retention. Off in dev to limit storage cost.')
+param enableSqlLongTermRetention bool = environment == 'prod'
+
+@description('Static Web Apps SKU. Free is enough for the Vite SPA.')
+@allowed([
+  'Free'
+  'Standard'
+])
+param staticWebAppSku string = 'Free'
 
 @description('Initial SQL administrator login. Replace with Entra-only admin after bootstrap.')
 param sqlAdministratorLogin string
@@ -28,6 +53,9 @@ param sqlAdministratorLoginPassword string
 
 @description('Optional Entra object ID for Azure AD SQL administrator. Leave empty to configure later.')
 param sqlAzureAdAdministratorObjectId string = ''
+
+@description('Entra object ID of the user or group that sets Key Vault secrets. Required to view/edit secrets in the portal or CLI; RG Owner is not enough.')
+param keyVaultSecretsOfficerPrincipalId string = ''
 
 @description('Container image for the API. Use a placeholder until the first CI deploy pushes to ACR.')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
@@ -93,6 +121,8 @@ var sqlServerName = !empty(sqlServerNameOverride)
 // Key Vault names are globally unique. Use resource group ID (not name) so recreated RGs get a fresh vault name.
 var keyVaultName = take('licrm-${environment}-${resourceSuffix}', 24)
 
+var staticWebAppName = take('${baseName}-swa-${resourceSuffix}', 60)
+
 module network 'modules/network.bicep' = {
   name: 'network-${environment}'
   params: {
@@ -130,6 +160,7 @@ module keyVault 'modules/keyvault.bicep' = {
     enablePurgeProtection: true
     tags: tags
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    secretsOfficerPrincipalId: keyVaultSecretsOfficerPrincipalId
   }
 }
 
@@ -152,6 +183,8 @@ module sql 'modules/sql.bicep' = {
     minCapacity: sqlMinCapacity
     enableAuditing: enableSqlAuditing
     enableDiagnostics: enableSqlDiagnostics
+    backupStorageRedundancy: sqlBackupStorageRedundancy
+    enableLongTermRetention: enableSqlLongTermRetention
   }
 }
 
@@ -168,6 +201,16 @@ module githubOidc 'modules/github-oidc.bicep' = {
     githubRepository: githubRepository
     githubEnvironment: environment
     acrName: acrName
+  }
+}
+
+module staticWebApp 'modules/staticwebapp.bicep' = {
+  name: 'staticwebapp-${environment}'
+  params: {
+    location: location
+    staticWebAppName: staticWebAppName
+    tags: tags
+    sku: staticWebAppSku
   }
 }
 
@@ -191,6 +234,21 @@ module containerApps 'modules/containerapps.bicep' = {
     memory: containerAppMemory
     minReplicas: containerAppMinReplicas
     maxReplicas: containerAppMaxReplicas
+    corsAllowedOrigins: concat([staticWebApp.outputs.origin], additionalCorsOrigins)
+  }
+}
+
+module githubClientOidc 'modules/github-client-oidc.bicep' = {
+  name: 'github-client-oidc-${environment}'
+  params: {
+    location: location
+    baseName: baseName
+    tags: tags
+    githubOwner: githubOwner
+    githubRepository: githubClientRepository
+    githubEnvironment: environment
+    staticWebAppName: staticWebApp.outputs.name
+    containerAppName: containerApps.outputs.apiName
   }
 }
 
@@ -204,5 +262,10 @@ output sqlServerFqdn string = sql.outputs.sqlServerFqdn
 output sqlServerName string = sqlServerName
 output databaseName string = sql.outputs.databaseName
 output githubDeployClientId string = githubOidc.outputs.clientId
+output githubClientDeployClientId string = githubClientOidc.outputs.clientId
 output containerAppIdentityPrincipalId string = containerApps.outputs.apiIdentityPrincipalId
 output logAnalyticsWorkspaceId string = monitor.outputs.logAnalyticsWorkspaceId
+output staticWebAppName string = staticWebApp.outputs.name
+output clientHostname string = staticWebApp.outputs.hostname
+output clientOrigin string = staticWebApp.outputs.origin
+output clientRedirectUri string = staticWebApp.outputs.redirectUri

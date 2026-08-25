@@ -54,6 +54,11 @@ Note outputs (names are auto-generated on first deploy — copy from output, do 
 - `acrName`, `acrLoginServer` — for GitHub deploy workflow
 - `containerAppIdentityPrincipalId` — managed identity object ID
 - `keyVaultUri`, `keyVaultName`
+- `clientOrigin`, `clientRedirectUri`, `staticWebAppName` — SPA URL; add `clientRedirectUri` to the Entra SPA registration
+- `githubDeployClientId` — API repo GitHub OIDC (`AZURE_CLIENT_ID`)
+- `githubClientDeployClientId` — client repo GitHub OIDC (`AZURE_CLIENT_ID` in **that** repo)
+
+CORS `Cors:AllowedOrigins` is set from `clientOrigin` on the Container App. After both apps are deployed, the browser origin matches the API allow list.
 
 ### 2. Configure SQL Entra administrator (if not already set)
 
@@ -73,7 +78,21 @@ Run as the SQL Entra administrator:
 
 This creates an Entra contained user mapped to the Container App identity and adds `db_datareader` / `db_datawriter`.
 
-### 4. Store Entra app settings in Key Vault
+### 4. Grant yourself Key Vault Secrets Officer
+
+The vault uses **RBAC** (`enableRbacAuthorization: true`). Resource group Owner/Contributor is **control plane only** — it does not let you list, read, or set secrets. Infra grants **Key Vault Secrets User** to the API managed identity (runtime read). A person who sets secrets needs **Key Vault Secrets Officer**.
+
+For an existing vault (no full redeploy):
+
+```powershell
+.\scripts\grant-keyvault-secrets-officer.ps1 -ResourceGroup rg-licrm-dev
+```
+
+That assigns Secrets Officer to the signed-in user. Wait one to two minutes, then refresh the portal. Future local deploys (`deploy-infra-dev.ps1`) pass your object ID automatically. To keep the assignment in Bicep, set `keyVaultSecretsOfficerPrincipalId` in `infra/parameters/dev.bicepparam` (`az ad signed-in-user show --query id -o tsv`). That GUID is not a secret.
+
+The vault is private-endpoint only. After RBAC works, a laptop can still hit a **firewall** error. Temporarily enable public access, set secrets, then disable it again (the grant script prints those commands).
+
+### 5. Store Entra app settings in Key Vault
 
 After the API app registration exists ([entra-policies.md](entra-policies.md)):
 

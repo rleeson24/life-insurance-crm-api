@@ -99,7 +99,7 @@ Map to API configuration (`AzureAd` section — store in Key Vault in Azure, nev
 | `AzureAd:ClientId` | `AzureAd--ClientId` | **API** application (client) ID |
 | `AzureAd:Audience` | `AzureAd--Audience` | Application ID URI (`api://life-insurance-crm`) |
 
-`AzureAd:ClientId` is the **API** registration, not the SPA. After creating the secrets:
+`AzureAd:ClientId` is the **API** registration, not the SPA. Grant **Key Vault Secrets Officer** first (resource group Owner cannot set secrets — see [azure-runtime-auth.md](azure-runtime-auth.md) §4), then:
 
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--TenantId" --value "<tenant-id>"
@@ -114,7 +114,7 @@ Restart the Container App so it reloads configuration. Runtime wiring is in [azu
 1. **New registration** → name `LifeInsuranceCRM-SPA` → single tenant.
 2. **Authentication** → **Add a platform** → **Single-page application**:
    - `http://localhost:5387/` (Vite port in `life-insurance-crm-client/src/vite.config.ts`)
-   - Production SPA origin when it exists (exact origin, trailing slash as Entra requires)
+   - Production SPA origin from Bicep output `clientRedirectUri` (exact origin plus trailing slash, e.g. `https://<name>.azurestaticapps.net/`)
 3. Implicit grant and hybrid flows: **off**. Auth code + PKCE only (MSAL default).
 4. **API permissions** → **Add a permission** → **My APIs** → `LifeInsuranceCRM-API` → delegated `access_as_user` → **Grant admin consent**.
 5. No client secret. No certificates.

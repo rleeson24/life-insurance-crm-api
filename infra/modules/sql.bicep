@@ -16,6 +16,18 @@ param minCapacity string
 param enableAuditing bool
 param enableDiagnostics bool
 
+@description('SQL backup storage redundancy. Local for cheap dev; Geo for prod.')
+@allowed([
+  'Local'
+  'Zone'
+  'Geo'
+  'GeoZone'
+])
+param backupStorageRedundancy string = 'Local'
+
+@description('Enable long-term backup retention (weekly/monthly/yearly). Off in dev to limit storage cost.')
+param enableLongTermRetention bool = false
+
 var databaseName = 'LifeInsuranceCRM'
 var isServerless = skuName == 'GP_S_Gen5'
 
@@ -50,12 +62,24 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
     {
       zoneRedundant: false
       readScale: 'Disabled'
+      requestedBackupStorageRedundancy: backupStorageRedundancy
     },
     isServerless ? {
       autoPauseDelay: autoPauseDelay
       minCapacity: json(minCapacity)
     } : {}
   )
+}
+
+resource longTermRetentionPolicy 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2023-08-01-preview' = if (enableLongTermRetention) {
+  parent: sqlDatabase
+  name: 'default'
+  properties: {
+    weeklyRetention: 'P4W'
+    monthlyRetention: 'P12M'
+    yearlyRetention: 'P5Y'
+    weekOfYear: 1
+  }
 }
 
 resource transparentDataEncryption 'Microsoft.Sql/servers/databases/transparentDataEncryption@2023-08-01-preview' = {
