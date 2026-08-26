@@ -133,17 +133,24 @@ void AddAuthentication(WebApplicationBuilder webBuilder)
         options.AddPolicy(
             AuthorizationPolicies.CanRead,
             policy => policy.AddRequirements(new RoleRequirement(
+                OrganizationRoles.SuperAdmin,
                 OrganizationRoles.Admin,
                 OrganizationRoles.Agent,
                 OrganizationRoles.ReadOnly)));
         options.AddPolicy(
             AuthorizationPolicies.CanWrite,
             policy => policy.AddRequirements(new RoleRequirement(
+                OrganizationRoles.SuperAdmin,
                 OrganizationRoles.Admin,
                 OrganizationRoles.Agent)));
         options.AddPolicy(
             AuthorizationPolicies.CanDelete,
-            policy => policy.AddRequirements(new RoleRequirement(OrganizationRoles.Admin)));
+            policy => policy.AddRequirements(new RoleRequirement(
+                OrganizationRoles.SuperAdmin,
+                OrganizationRoles.Admin)));
+        options.AddPolicy(
+            AuthorizationPolicies.CanManagePlatform,
+            policy => policy.AddRequirements(new RoleRequirement(OrganizationRoles.SuperAdmin)));
     });
 }
 

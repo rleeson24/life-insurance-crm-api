@@ -26,6 +26,7 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
     private Mock<IActorTracker> ActorTracker => MockFor<IActorTracker>();
     private Mock<INowProvider> NowProvider => MockFor<INowProvider>();
     private Mock<IOrganizationUserRepository> OrganizationUserRepository => MockFor<IOrganizationUserRepository>();
+    private Mock<ITenantRepository> TenantRepository => MockFor<ITenantRepository>();
 
     public CreateOrganizationUserUseCaseTests()
     {
@@ -59,6 +60,7 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
             ActorTracker.Object,
             NowProvider.Object,
             OrganizationUserRepository.Object,
+            TenantRepository.Object,
             new ClientUseCaseHelpers(),
             new OrganizationUserInputValidator());
 
@@ -85,8 +87,42 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
 
         Assert.Equal(UseCaseStatus.Success, response.Status);
         Assert.Equal(_createdUser.OrganizationUserId, response.Result!.OrganizationUserId);
+        TenantRepository.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), _ct), Times.Never);
+    }
+
+    [Fact]
+    public async Task Execute_WhenAdminSuppliesOtherTenantId_IgnoresIt()
+    {
+        var otherTenantId = CreateGuid();
+        var model = _inputModel with { TenantId = otherTenantId };
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId);
+        NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        OrganizationUserRepository
+            .Setup(r => r.ExistsByUserIdAsync(model.UserId, _ct))
+            .ReturnsAsync(false);
+        OrganizationUserRepository
+            .Setup(r => r.InsertAsync(
+                _tenantId,
+                model.UserId,
+                model.EmailAddress,
+                model.DisplayName,
+                model.Role,
+                It.IsAny<AuditStamp>(),
+                _ct))
+            .ReturnsAsync(_createdUser);
+
+        var response = await BuildSubject().Execute(ProcessRequest<CreateOrganizationUserModel>.From(model, _ct));
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
         OrganizationUserRepository.Verify(
-            r => r.InsertTenantAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<AuditStamp>(), _ct),
+            r => r.InsertAsync(
+                otherTenantId,
+                It.IsAny<Guid>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string>(),
+                It.IsAny<AuditStamp>(),
+                _ct),
             Times.Never);
     }
 
@@ -105,17 +141,55 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
     }
 
     [Fact]
-    public async Task Execute_WhenCreateNewTenant_InsertsTenantThenUser()
+    public async Task Execute_WhenSuperAdminOmitsTenantId_ReturnsInvalidRequest()
     {
-        var model = _inputModel with { CreateNewTenant = true, NewTenantName = "North Agency" };
-        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId);
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
+
+        var response = await BuildSubject().Execute(ProcessRequest<CreateOrganizationUserModel>.From(_inputModel, _ct));
+
+        Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
+        Assert.Equal(OrganizationUserErrorCodes.TenantIdRequired, response.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Execute_WhenSuperAdminTenantMissing_ReturnsNotFound()
+    {
+        var targetTenantId = CreateGuid();
+        var model = _inputModel with { TenantId = targetTenantId };
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
+        TenantRepository
+            .Setup(r => r.GetByIdAsync(targetTenantId, _ct))
+            .ReturnsAsync((TenantDto?)null);
+
+        var response = await BuildSubject().Execute(ProcessRequest<CreateOrganizationUserModel>.From(model, _ct));
+
+        Assert.Equal(UseCaseStatus.NotFound, response.Status);
+        Assert.Equal(OrganizationUserErrorCodes.TenantNotFound, response.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Execute_WhenSuperAdmin_InsertsIntoRequestedTenant()
+    {
+        var targetTenantId = CreateGuid();
+        var model = _inputModel with { TenantId = targetTenantId };
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
         NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        TenantRepository
+            .Setup(r => r.GetByIdAsync(targetTenantId, _ct))
+            .ReturnsAsync(new TenantDto
+            {
+                TenantId = targetTenantId,
+                Name = "North Agency",
+                IsActive = true,
+                CreatedAt = _now,
+                UpdatedAt = _now,
+            });
         OrganizationUserRepository
             .Setup(r => r.ExistsByUserIdAsync(model.UserId, _ct))
             .ReturnsAsync(false);
         OrganizationUserRepository
             .Setup(r => r.InsertAsync(
-                It.IsAny<Guid>(),
+                targetTenantId,
                 model.UserId,
                 model.EmailAddress,
                 model.DisplayName,
@@ -125,13 +199,13 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
             .ReturnsAsync(new OrganizationUserDto
             {
                 OrganizationUserId = _createdUser.OrganizationUserId,
-                TenantId = _createdUser.TenantId,
+                TenantId = targetTenantId,
                 TenantName = "North Agency",
                 UserId = _createdUser.UserId,
                 EmailAddress = _createdUser.EmailAddress,
                 DisplayName = _createdUser.DisplayName,
                 Role = _createdUser.Role,
-                IsActive = true,
+                IsActive = _createdUser.IsActive,
                 CreatedAt = _createdUser.CreatedAt,
                 UpdatedAt = _createdUser.UpdatedAt,
             });
@@ -140,7 +214,14 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
 
         Assert.Equal(UseCaseStatus.Success, response.Status);
         OrganizationUserRepository.Verify(
-            r => r.InsertTenantAsync(It.IsAny<Guid>(), "North Agency", It.IsAny<AuditStamp>(), _ct),
+            r => r.InsertAsync(
+                targetTenantId,
+                model.UserId,
+                model.EmailAddress,
+                model.DisplayName,
+                model.Role,
+                It.IsAny<AuditStamp>(),
+                _ct),
             Times.Once);
     }
 }

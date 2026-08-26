@@ -75,6 +75,18 @@ public sealed class ActorResolutionMiddleware
                 return;
             }
 
+            if (!userContext.TenantIsActive && !OrganizationRoles.IsSuperAdmin(userContext.Role))
+            {
+                await WriteForbiddenAsync(
+                    context,
+                    problemDetailsFactory,
+                    securityEventRecorder,
+                    AuthSecurityEventTypes.TenantAccessDenied,
+                    "Organization is inactive",
+                    cancellationToken: context.RequestAborted);
+                return;
+            }
+
             var tenantId = authOptions.Value.ShouldUseDevelopmentScheme(configuration)
                 ? authOptions.Value.DevelopmentTenantId
                 : userContext.TenantId;

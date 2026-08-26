@@ -3,8 +3,9 @@
 # your IP, runs T-SQL with an Entra token, then closes it again.
 #
 # Default: current az-login user as Admin on the development CRM tenant.
+# Platform operator (you): -Role SuperAdmin so you can manage all organizations.
 #
-#   .\scripts\provision-organization-user.ps1
+#   .\scripts\provision-organization-user.ps1 -Role SuperAdmin
 #
 # Local SQL (no Azure networking changes):
 #
@@ -26,7 +27,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$allowedRoles = @('Admin', 'Agent', 'ReadOnly')
+$allowedRoles = @('SuperAdmin', 'Admin', 'Agent', 'ReadOnly')
 if ($allowedRoles -notcontains $Role) {
     throw "Role must be one of: $($allowedRoles -join ', ')."
 }

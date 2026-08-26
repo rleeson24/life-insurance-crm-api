@@ -29,13 +29,39 @@ public class ActorResolutionMiddlewareTests
             .Setup(r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OrganizationUserContext(_tenantId, OrganizationRoles.Admin, IsActive: false));
 
-        var securityEventRecorder = new Mock<IAuthSecurityEventRecorder>();
-        var problemDetailsFactory = new ProblemDetailsFactory();
-        var authOptions = Options.Create(new AuthOptions
+        var invoked = false;
+        RequestDelegate next = _ =>
         {
-            UseDevelopmentAuthentication = true,
-            DevelopmentTenantId = _tenantId,
-        });
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        await new ActorResolutionMiddleware(next).InvokeAsync(
+            context,
+            actorTracker,
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
+            new ConfigurationBuilder().Build());
+
+        Assert.False(invoked);
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+        Assert.StartsWith("application/json", context.Response.ContentType);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenTenantInactive_Returns403()
+    {
+        var context = CreateAuthenticatedContext();
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        organizationUserRepository
+            .Setup(r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationUserContext(
+                _tenantId,
+                OrganizationRoles.Admin,
+                IsActive: true,
+                TenantIsActive: false));
 
         var invoked = false;
         RequestDelegate next = _ =>
@@ -44,19 +70,53 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var middleware = new ActorResolutionMiddleware(next);
-        await middleware.InvokeAsync(
+        await new ActorResolutionMiddleware(next).InvokeAsync(
             context,
-            actorTracker,
+            new LifeInsuranceCRM.API.Auth.ActorTracker(),
             organizationUserRepository.Object,
-            securityEventRecorder.Object,
-            problemDetailsFactory,
-            authOptions,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
             new ConfigurationBuilder().Build());
 
         Assert.False(invoked);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
-        Assert.StartsWith("application/json", context.Response.ContentType);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenTenantInactiveAndSuperAdmin_Continues()
+    {
+        var context = CreateAuthenticatedContext();
+        var actorTracker = new LifeInsuranceCRM.API.Auth.ActorTracker();
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        organizationUserRepository
+            .Setup(r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationUserContext(
+                _tenantId,
+                OrganizationRoles.SuperAdmin,
+                IsActive: true,
+                TenantIsActive: false));
+
+        string? capturedRole = null;
+        var invoked = false;
+        RequestDelegate next = _ =>
+        {
+            capturedRole = actorTracker.Role;
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        await new ActorResolutionMiddleware(next).InvokeAsync(
+            context,
+            actorTracker,
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
+            new ConfigurationBuilder().Build());
+
+        Assert.True(invoked);
+        Assert.Equal(OrganizationRoles.SuperAdmin, capturedRole);
     }
 
     [Fact]
@@ -69,14 +129,6 @@ public class ActorResolutionMiddlewareTests
             .Setup(r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OrganizationUserContext(_tenantId, OrganizationRoles.Agent, IsActive: true));
 
-        var securityEventRecorder = new Mock<IAuthSecurityEventRecorder>();
-        var problemDetailsFactory = new ProblemDetailsFactory();
-        var authOptions = Options.Create(new AuthOptions
-        {
-            UseDevelopmentAuthentication = true,
-            DevelopmentTenantId = _tenantId,
-        });
-
         string? capturedRole = null;
         Guid? capturedTenantId = null;
         var invoked = false;
@@ -88,14 +140,13 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        var middleware = new ActorResolutionMiddleware(next);
-        await middleware.InvokeAsync(
+        await new ActorResolutionMiddleware(next).InvokeAsync(
             context,
             actorTracker,
             organizationUserRepository.Object,
-            securityEventRecorder.Object,
-            problemDetailsFactory,
-            authOptions,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
             new ConfigurationBuilder().Build());
 
         Assert.True(invoked);

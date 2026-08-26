@@ -7,8 +7,9 @@ public interface IOrganizationUserRepository
 {
     Task<OrganizationUserContext?> GetUserContextAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<OrganizationUserDto>> ListByTenantAsync(
-        Guid tenantId,
+    Task<IReadOnlyList<OrganizationUserDto>> ListAsync(
+        Guid? tenantId,
+        bool includeSuperAdmins,
         CancellationToken cancellationToken = default);
 
     Task<OrganizationUserDto?> GetByOrganizationUserIdAsync(
@@ -19,11 +20,7 @@ public interface IOrganizationUserRepository
 
     Task<int> CountActiveAdminsInTenantAsync(Guid tenantId, CancellationToken cancellationToken = default);
 
-    Task InsertTenantAsync(
-        Guid tenantId,
-        string name,
-        AuditStamp audit,
-        CancellationToken cancellationToken = default);
+    Task<int> CountActiveSuperAdminsAsync(CancellationToken cancellationToken = default);
 
     Task<OrganizationUserDto> InsertAsync(
         Guid tenantId,

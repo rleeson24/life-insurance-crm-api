@@ -25,9 +25,10 @@ public sealed class OrganizationUserRepository : IOrganizationUserRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-            SELECT TOP (1) TenantId, Role, IsActive
-            FROM dbo.OrganizationUsers
-            WHERE UserId = @UserId AND IsDeleted = 0;
+            SELECT TOP (1) u.TenantId, u.Role, u.IsActive, t.IsActive
+            FROM dbo.OrganizationUsers u
+            INNER JOIN dbo.Tenants t ON t.TenantId = u.TenantId
+            WHERE u.UserId = @UserId AND u.IsDeleted = 0 AND t.IsDeleted = 0;
             """;
 
         OrganizationUserContext? userContext = null;
@@ -40,7 +41,8 @@ public sealed class OrganizationUserRepository : IOrganizationUserRepository
                     userContext = new OrganizationUserContext(
                         reader.GetGuid(0),
                         reader.GetString(1),
-                        reader.GetBoolean(2));
+                        reader.GetBoolean(2),
+                        reader.GetBoolean(3));
                 }
             },
             cancellationToken,
@@ -49,16 +51,19 @@ public sealed class OrganizationUserRepository : IOrganizationUserRepository
         return userContext;
     }
 
-    public async Task<IReadOnlyList<OrganizationUserDto>> ListByTenantAsync(
-        Guid tenantId,
+    public async Task<IReadOnlyList<OrganizationUserDto>> ListAsync(
+        Guid? tenantId,
+        bool includeSuperAdmins,
         CancellationToken cancellationToken = default)
     {
         var sql = $"""
             SELECT {UserSelectColumns}
             FROM dbo.OrganizationUsers u
             INNER JOIN dbo.Tenants t ON t.TenantId = u.TenantId
-            WHERE u.TenantId = @TenantId AND u.IsDeleted = 0
-            ORDER BY u.DisplayName, u.EmailAddress;
+            WHERE u.IsDeleted = 0
+              AND (@TenantId IS NULL OR u.TenantId = @TenantId)
+              AND (@IncludeSuperAdmins = 1 OR u.Role <> @SuperAdminRole)
+            ORDER BY t.Name, u.DisplayName, u.EmailAddress;
             """;
 
         var users = new List<OrganizationUserDto>();
@@ -72,7 +77,12 @@ public sealed class OrganizationUserRepository : IOrganizationUserRepository
                 }
             },
             cancellationToken,
-            new SqlParameter("@TenantId", tenantId));
+            new SqlParameter("@TenantId", System.Data.SqlDbType.UniqueIdentifier)
+            {
+                Value = tenantId is { } id ? id : DBNull.Value,
+            },
+            new SqlParameter("@IncludeSuperAdmins", includeSuperAdmins),
+            new SqlParameter("@SuperAdminRole", OrganizationRoles.SuperAdmin));
 
         return users;
     }
@@ -130,26 +140,20 @@ public sealed class OrganizationUserRepository : IOrganizationUserRepository
             new SqlParameter("@Role", OrganizationRoles.Admin));
     }
 
-    public Task InsertTenantAsync(
-        Guid tenantId,
-        string name,
-        AuditStamp audit,
-        CancellationToken cancellationToken = default)
+    public async Task<int> CountActiveSuperAdminsAsync(CancellationToken cancellationToken = default)
     {
         const string sql = """
-            INSERT INTO dbo.Tenants (TenantId, Name, CreatedAt, CreatedByUserId, UpdatedAt, UpdatedByUserId, IsDeleted)
-            VALUES (@TenantId, @Name, @CreatedAt, @CreatedByUserId, @UpdatedAt, @UpdatedByUserId, 0);
+            SELECT COUNT(*)
+            FROM dbo.OrganizationUsers
+            WHERE Role = @Role
+              AND IsActive = 1
+              AND IsDeleted = 0;
             """;
 
-        return _dbExecutor.ExecuteNonQueryAsync(
+        return await _dbExecutor.ExecuteScalarAsync<int>(
             sql,
             cancellationToken,
-            new SqlParameter("@TenantId", tenantId),
-            new SqlParameter("@Name", name),
-            new SqlParameter("@CreatedAt", audit.Timestamp),
-            new SqlParameter("@CreatedByUserId", audit.UserId),
-            new SqlParameter("@UpdatedAt", audit.Timestamp),
-            new SqlParameter("@UpdatedByUserId", audit.UserId));
+            new SqlParameter("@Role", OrganizationRoles.SuperAdmin));
     }
 
     public async Task<OrganizationUserDto> InsertAsync(

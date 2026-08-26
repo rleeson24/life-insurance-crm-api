@@ -25,20 +25,19 @@ public class OrganizationUserInputValidatorTests
     }
 
     [Fact]
-    public void ValidateCreate_WhenNewTenantNameMissing_ReturnsInvalidRequest()
+    public void ValidateCreate_WhenSuperAdminRole_ReturnsInvalidRequest()
     {
         var model = new CreateOrganizationUserModel
         {
             UserId = Guid.NewGuid(),
             DisplayName = "Jane",
-            Role = OrganizationRoles.Agent,
-            CreateNewTenant = true,
+            Role = OrganizationRoles.SuperAdmin,
         };
 
         var response = _validator.ValidateCreate(model);
 
         Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
-        Assert.Equal(OrganizationUserErrorCodes.TenantNameRequired, response.ErrorCode);
+        Assert.Equal(OrganizationUserErrorCodes.RoleInvalid, response.ErrorCode);
     }
 
     [Fact]

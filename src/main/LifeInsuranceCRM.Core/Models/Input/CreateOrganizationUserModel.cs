@@ -15,7 +15,5 @@ public sealed record CreateOrganizationUserModel
 
     public string Role { get; init; } = OrganizationRoles.Agent;
 
-    public bool CreateNewTenant { get; init; }
-
-    public string? NewTenantName { get; init; }
+    public Guid? TenantId { get; init; }
 }

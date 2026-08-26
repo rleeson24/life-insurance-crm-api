@@ -2,6 +2,7 @@ using LifeInsuranceCRM.API.Services;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Input;
+using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.OrganizationUsers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,9 +27,10 @@ public sealed class OrganizationUsersController : ApiControllerBase
     [HttpGet]
     [Authorize(Policy = AuthorizationPolicies.CanDelete)]
     public Task<IActionResult> List(
+        [FromQuery] ListOrganizationUsersRequest request,
         [FromServices] IListOrganizationUsersUseCase useCase,
         CancellationToken cancellationToken) =>
-        FromUseCase(useCase.Execute(_processRequestFactory.Create(true, cancellationToken)));
+        FromUseCase(useCase.Execute(_processRequestFactory.Create(request, cancellationToken)));
 
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.CanDelete)]

@@ -3,11 +3,11 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Utilities;
 
-namespace LifeInsuranceCRM.Core.UseCases.OrganizationUsers;
+namespace LifeInsuranceCRM.Core.UseCases.Tenants;
 
-internal static class OrganizationUserUseCaseHelpers
+internal static class TenantUseCaseHelpers
 {
-    public static ProcessResponse<bool> ValidateUserManager(
+    public static ProcessResponse<bool> ValidateSuperAdmin(
         IActorTracker actorTracker,
         IClientUseCaseHelpers clientUseCaseHelpers)
     {
@@ -17,12 +17,12 @@ internal static class OrganizationUserUseCaseHelpers
             return validation;
         }
 
-        if (!OrganizationRoles.CanManageOrganizationUsers(actorTracker.Role))
+        if (!OrganizationRoles.IsSuperAdmin(actorTracker.Role))
         {
             return ProcessResponse<bool>.WithStatus(
                 UseCaseStatus.Forbidden,
-                "Administrator role is required",
-                OrganizationUserErrorCodes.ActorNotAdmin);
+                "SuperAdmin role is required",
+                TenantErrorCodes.ActorNotSuperAdmin);
         }
 
         return ProcessResponse<bool>.Succeeded(true);

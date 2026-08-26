@@ -20,6 +20,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
     private readonly IActorTracker _actorTracker;
     private readonly INowProvider _nowProvider;
     private readonly IOrganizationUserRepository _organizationUserRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly IOrganizationUserInputValidator _organizationUserInputValidator;
 
@@ -27,12 +28,14 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IOrganizationUserRepository organizationUserRepository,
+        ITenantRepository tenantRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
         IOrganizationUserInputValidator organizationUserInputValidator)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _organizationUserRepository = organizationUserRepository;
+        _tenantRepository = tenantRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _organizationUserInputValidator = organizationUserInputValidator;
     }
@@ -40,7 +43,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
     public async Task<ProcessResponse<OrganizationUserDto>> Execute(
         ProcessRequest<CreateOrganizationUserModel> request)
     {
-        var validation = OrganizationUserUseCaseHelpers.ValidateAdmin(
+        var validation = OrganizationUserUseCaseHelpers.ValidateUserManager(
             _actorTracker,
             _clientUseCaseHelpers);
         if (validation.IsFailed(out ProcessResponse<OrganizationUserDto> failure))
@@ -54,6 +57,12 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
             return inputFailure;
         }
 
+        var tenantId = await ResolveTenantIdAsync(request.Payload, request.CancellationToken);
+        if (tenantId.IsFailed(out ProcessResponse<OrganizationUserDto> tenantFailure))
+        {
+            return tenantFailure;
+        }
+
         if (await _organizationUserRepository.ExistsByUserIdAsync(
                 request.Payload.UserId,
                 request.CancellationToken))
@@ -65,20 +74,8 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
         }
 
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);
-        var tenantId = _actorTracker.TenantId!.Value;
-
-        if (request.Payload.CreateNewTenant)
-        {
-            tenantId = Guid.NewGuid();
-            await _organizationUserRepository.InsertTenantAsync(
-                tenantId,
-                request.Payload.NewTenantName!.Trim(),
-                audit,
-                request.CancellationToken);
-        }
-
         var created = await _organizationUserRepository.InsertAsync(
-            tenantId,
+            tenantId.Result,
             request.Payload.UserId,
             TrimToNull(request.Payload.EmailAddress),
             request.Payload.DisplayName!.Trim(),
@@ -87,6 +84,31 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
             request.CancellationToken);
 
         return ProcessResponse<OrganizationUserDto>.Succeeded(created);
+    }
+
+    private async Task<ProcessResponse<Guid>> ResolveTenantIdAsync(
+        CreateOrganizationUserModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!OrganizationRoles.IsSuperAdmin(_actorTracker.Role))
+        {
+            return ProcessResponse<Guid>.Succeeded(_actorTracker.TenantId!.Value);
+        }
+
+        if (model.TenantId is not { } requestedTenantId || requestedTenantId == Guid.Empty)
+        {
+            return ProcessResponse<Guid>.InvalidRequestResponse(
+                "Tenant is required when adding a user as SuperAdmin",
+                OrganizationUserErrorCodes.TenantIdRequired);
+        }
+
+        var tenant = await _tenantRepository.GetByIdAsync(requestedTenantId, cancellationToken);
+        return tenant is null
+            ? ProcessResponse<Guid>.WithStatus(
+                UseCaseStatus.NotFound,
+                "Organization not found",
+                OrganizationUserErrorCodes.TenantNotFound)
+            : ProcessResponse<Guid>.Succeeded(requestedTenantId);
     }
 
     private static string? TrimToNull(string? value) =>

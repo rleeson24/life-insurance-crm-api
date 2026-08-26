@@ -14,11 +14,17 @@ public interface IOrganizationUserInputValidator
 
 public sealed class OrganizationUserInputValidator : IOrganizationUserInputValidator
 {
-    private static readonly HashSet<string> AllowedRoles =
+    private static readonly HashSet<string> AssignableRoles =
     [
         OrganizationRoles.Admin,
         OrganizationRoles.Agent,
         OrganizationRoles.ReadOnly,
+    ];
+
+    private static readonly HashSet<string> UpdateRoles =
+    [
+        ..AssignableRoles,
+        OrganizationRoles.SuperAdmin,
     ];
 
     public ProcessResponse<CreateOrganizationUserModel> ValidateCreate(CreateOrganizationUserModel model)
@@ -34,27 +40,11 @@ public sealed class OrganizationUserInputValidator : IOrganizationUserInputValid
             model.DisplayName,
             model.EmailAddress,
             model.Role,
-            requireDisplayName: true);
+            requireDisplayName: true,
+            allowedRoles: AssignableRoles);
         if (fieldValidation.IsFailed(out ProcessResponse<CreateOrganizationUserModel> failure))
         {
             return failure;
-        }
-
-        if (model.CreateNewTenant)
-        {
-            if (string.IsNullOrWhiteSpace(model.NewTenantName))
-            {
-                return ProcessResponse<CreateOrganizationUserModel>.InvalidRequestResponse(
-                    "Organization name is required when creating a new CRM tenant",
-                    OrganizationUserErrorCodes.TenantNameRequired);
-            }
-
-            if (model.NewTenantName.Trim().Length > 200)
-            {
-                return ProcessResponse<CreateOrganizationUserModel>.InvalidRequestResponse(
-                    "Organization name is too long",
-                    OrganizationUserErrorCodes.TenantNameTooLong);
-            }
         }
 
         return ProcessResponse<CreateOrganizationUserModel>.Succeeded(model);
@@ -73,7 +63,8 @@ public sealed class OrganizationUserInputValidator : IOrganizationUserInputValid
             model.DisplayName,
             model.EmailAddress,
             model.Role,
-            requireDisplayName: true);
+            requireDisplayName: true,
+            allowedRoles: UpdateRoles);
         if (fieldValidation.IsFailed(out ProcessResponse<UpdateOrganizationUserModel> failure))
         {
             return failure;
@@ -86,7 +77,8 @@ public sealed class OrganizationUserInputValidator : IOrganizationUserInputValid
         string? displayName,
         string? emailAddress,
         string? role,
-        bool requireDisplayName)
+        bool requireDisplayName,
+        HashSet<string> allowedRoles)
     {
         if (requireDisplayName && string.IsNullOrWhiteSpace(displayName))
         {
@@ -116,7 +108,7 @@ public sealed class OrganizationUserInputValidator : IOrganizationUserInputValid
                 OrganizationUserErrorCodes.EmailAddressInvalid);
         }
 
-        if (string.IsNullOrWhiteSpace(role) || !AllowedRoles.Contains(role))
+        if (string.IsNullOrWhiteSpace(role) || !allowedRoles.Contains(role))
         {
             return ProcessResponse<bool>.InvalidRequestResponse(
                 "Role must be Admin, Agent, or ReadOnly",
