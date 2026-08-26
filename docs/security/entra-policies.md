@@ -139,11 +139,11 @@ dotnet user-secrets set "AzureAd:Audience" "api://life-insurance-crm"
 
 ### User provisioning
 
-JWT **`oid`** (the Entra object ID GUID) must match `OrganizationUsers.UserId` or the API returns 403 (`TenantAccessDenied`). Copy Object ID from Entra admin center → Users, not from `NameIdentifier` / `sub` in a decoded token. After a person is created in Entra:
+JWT **`oid`** (the Entra object ID GUID) must match `OrganizationUsers.UserId` or the API returns 403 (`TenantAccessDenied`). Copy Object ID from Entra admin center → Users, not from `NameIdentifier` / `sub` in a decoded token.
 
-1. Copy their **Object ID**.
-2. Insert an `OrganizationUsers` row for the correct `TenantId` with that `UserId`, email, display name, and role.
-3. Automated JIT provisioning is not built yet.
+The first SuperAdmin cannot use the app until they exist in SQL. Azure SQL is private-endpoint only — do not leave public access on. Run `scripts/provision-organization-user.ps1 -Role SuperAdmin` (temporarily opens public access for your IP, then closes it). After that, **Organizations** creates CRM tenants and can mark them inactive; **Users** maps Entra users into a chosen tenant as Admin / Agent / ReadOnly. Organization Admins can manage users in their own tenant only. They cannot create tenants or assign SuperAdmin.
+
+Entra directory ID is shared by everyone. CRM `TenantId` is the data-isolation key and is created in SQL, not looked up in Entra.
 
 ## GitHub 2FA and branch protection
 

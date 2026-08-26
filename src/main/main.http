@@ -74,6 +74,61 @@ Accept: application/json
 GET {{main_HostAddress}}/api/follow-ups
 Accept: application/json
 
+### Current user
+GET {{main_HostAddress}}/api/me
+Accept: application/json
+
+### List organization users (Admin or SuperAdmin)
+GET {{main_HostAddress}}/api/organization-users
+Accept: application/json
+
+### List organization users in one tenant (SuperAdmin)
+GET {{main_HostAddress}}/api/organization-users?tenantId=22222222-2222-2222-2222-222222222222
+Accept: application/json
+
+### Create organization user
+POST {{main_HostAddress}}/api/organization-users
+Content-Type: application/json
+
+{
+  "userId": "e1da25de-af92-4e5c-a9ac-1bc186bb9a4f",
+  "emailAddress": "user@example.com",
+  "displayName": "New User",
+  "role": "Agent",
+  "tenantId": "22222222-2222-2222-2222-222222222222"
+}
+
+### Update organization user
+PATCH {{main_HostAddress}}/api/organization-users/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+Content-Type: application/json
+
+{
+  "emailAddress": "user@example.com",
+  "displayName": "New User",
+  "role": "Agent",
+  "isActive": true
+}
+
+### List tenants (SuperAdmin)
+GET {{main_HostAddress}}/api/tenants
+Accept: application/json
+
+### Create tenant (SuperAdmin)
+POST {{main_HostAddress}}/api/tenants
+Content-Type: application/json
+
+{
+  "name": "North Agency"
+}
+
+### Deactivate tenant (SuperAdmin)
+PATCH {{main_HostAddress}}/api/tenants/22222222-2222-2222-2222-222222222222
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
 ### OpenAPI document (Development only)
 GET {{main_HostAddress}}/openapi/v1.json
 Accept: application/json

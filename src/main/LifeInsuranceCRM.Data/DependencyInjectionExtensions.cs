@@ -11,6 +11,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IDbExecutor, DbExecutor>();
         services.AddScoped<IAuthSecurityEventRepository, AuthSecurityEventRepository>();
         services.AddScoped<IOrganizationUserRepository, OrganizationUserRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientInteractionRepository, ClientInteractionRepository>();
         services.AddScoped<IMedicareEnrollmentRepository, MedicareEnrollmentRepository>();
