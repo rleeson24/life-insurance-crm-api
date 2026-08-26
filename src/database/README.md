@@ -5,16 +5,30 @@
 - `live/` — application schema (RLS, audit columns, domain-first naming)
 - `migrate/` — Access-shaped staging + Phase 2 map scripts
 
-## Applying live scripts (local)
+## Applying live scripts
 
-Run in order against the target database:
+Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`009` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
 
-1. `live/001_Tenants.sql` through `live/008_RLS.sql`
-2. Optional dev seed: `live/seed/001_DevelopmentTenant.sql`
+**Azure SQL** (private-endpoint server; uses your Entra login and briefly opens public access):
 
-**Aspire:** Start `LifeInsuranceCRM.AppHost` (not the API project alone). Aspire injects `ConnectionStrings:LifeInsuranceCRM` pointing at the SQL container; the API prefers that over `Database:ConnectionString`. On first database creation, AppHost runs the live schema scripts automatically via `WithCreationScript` (same order as below, including dev seed).
+```powershell
+cd src/database
+.\apply-live-schema.ps1
+```
 
-**Standalone API:** Run SQL locally on port 1433 and set `Database:ConnectionString` in `appsettings.Development.json`, or apply scripts against your instance with `apply-live-schema.cmd`.
+Do not pass `-IncludeSeed` on Azure. Map yourself afterward with `scripts/provision-organization-user.ps1`.
+
+**Local SQL** (Windows auth):
+
+```powershell
+.\apply-live-schema.ps1 -Server "localhost,1433" -UseIntegratedSecurity -IncludeSeed
+```
+
+`apply-live-schema.cmd` is a wrapper for that local path.
+
+**Aspire:** Start `LifeInsuranceCRM.AppHost` (not the API project alone). On first database creation, AppHost runs the same live scripts via `WithCreationScript` (including the dev seed). The volume is persistent, so later files such as `009` are not replayed — run `apply-live-schema.ps1` against the local container if the schema is behind.
+
+Standalone API: set `Database:ConnectionString` in `appsettings.Development.json`, or apply with the script above.
 
 ## Constants
 

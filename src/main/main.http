@@ -74,6 +74,37 @@ Accept: application/json
 GET {{main_HostAddress}}/api/follow-ups
 Accept: application/json
 
+### Current user
+GET {{main_HostAddress}}/api/me
+Accept: application/json
+
+### List organization users (Admin)
+GET {{main_HostAddress}}/api/organization-users
+Accept: application/json
+
+### Create organization user (Admin)
+POST {{main_HostAddress}}/api/organization-users
+Content-Type: application/json
+
+{
+  "userId": "e1da25de-af92-4e5c-a9ac-1bc186bb9a4f",
+  "emailAddress": "user@example.com",
+  "displayName": "New User",
+  "role": "Agent",
+  "createNewTenant": false
+}
+
+### Update organization user (Admin)
+PATCH {{main_HostAddress}}/api/organization-users/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+Content-Type: application/json
+
+{
+  "emailAddress": "user@example.com",
+  "displayName": "New User",
+  "role": "Agent",
+  "isActive": true
+}
+
 ### OpenAPI document (Development only)
 GET {{main_HostAddress}}/openapi/v1.json
 Accept: application/json
