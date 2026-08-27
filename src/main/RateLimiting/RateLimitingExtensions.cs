@@ -32,6 +32,20 @@ public static class RateLimitingExtensions
                     context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString();
                 }
 
+                var logger = context.HttpContext.RequestServices
+                    .GetService<ILoggerFactory>()
+                    ?.CreateLogger("LifeInsuranceCRM.API.RateLimiting");
+                var sanitizedMethod = (context.HttpContext.Request.Method ?? string.Empty)
+                    .Replace("\r", string.Empty)
+                    .Replace("\n", string.Empty);
+                var sanitizedPath = (context.HttpContext.Request.Path.Value ?? string.Empty)
+                    .Replace("\r", string.Empty)
+                    .Replace("\n", string.Empty);
+                logger?.LogWarning(
+                    "Rate limit exceeded for {HttpMethod} {Path}",
+                    sanitizedMethod,
+                    sanitizedPath);
+
                 var recorder = context.HttpContext.RequestServices.GetService<IAuthSecurityEventRecorder>();
                 if (recorder is not null)
                 {

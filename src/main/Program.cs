@@ -31,6 +31,7 @@ builder.Services.AddScoped<IDevelopmentDatabaseInitializer, DevelopmentDatabaseI
 
 var app = builder.Build();
 
+LogStartup(app);
 await InitializeDevelopmentDatabaseAsync(app);
 
 MapHealthEndpoints(app);
@@ -76,6 +77,14 @@ void AddWebApi(WebApplicationBuilder webBuilder)
                     .Select(e => e.ErrorMessage)
                     .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message))
                     ?? "The request body is invalid.";
+
+                var logger = context.HttpContext.RequestServices.GetService<ILoggerFactory>()
+                    ?.CreateLogger("LifeInsuranceCRM.API.ModelBinding");
+                logger?.LogDebug(
+                    "Invalid request body for {HttpMethod} {Path}: {ErrorMessage}",
+                    context.HttpContext.Request.Method,
+                    context.HttpContext.Request.Path.Value,
+                    firstError);
 
                 var problem = factory.Create(
                     context.HttpContext,
@@ -189,6 +198,43 @@ void AddRateLimitingPolicies(WebApplicationBuilder webBuilder)
     webBuilder.Services.AddCrmRateLimiting(rateOptions);
 }
 
+void LogStartup(WebApplication webApp)
+{
+    var logger = webApp.Logger;
+    var authOptions = webApp.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
+
+    if (authOptions.ShouldUseDevelopmentScheme(webApp.Configuration))
+    {
+        logger.LogWarning("Development authentication is enabled");
+    }
+    else
+    {
+        logger.LogInformation("Azure AD JWT authentication is enabled");
+    }
+
+    if (string.IsNullOrWhiteSpace(DatabaseConnectionStringResolver.Resolve(webApp.Configuration)))
+    {
+        logger.LogWarning("Database connection string is not configured");
+    }
+
+    var keyVaultOptions = webApp.Configuration.GetSection(KeyVaultOptions.SectionName).Get<KeyVaultOptions>()
+        ?? new KeyVaultOptions();
+    var keyVaultDecision = KeyVaultConfiguration.Evaluate(
+        keyVaultOptions.VaultUri,
+        webApp.Environment.EnvironmentName,
+        keyVaultOptions.AllowLocalAccess,
+        KeyVaultConfiguration.IsManagedIdentityAvailable());
+
+    if (keyVaultDecision.ShouldLoad)
+    {
+        logger.LogInformation("Azure Key Vault configuration is loaded");
+    }
+    else
+    {
+        logger.LogInformation("Azure Key Vault configuration is skipped");
+    }
+}
+
 void MapHealthEndpoints(WebApplication webApp) => webApp.MapDefaultEndpoints();
 
 void MapAspireDefaults(WebApplication webApp)
@@ -243,6 +289,7 @@ async Task InitializeDevelopmentDatabaseAsync(WebApplication webApp)
 
     if (string.IsNullOrWhiteSpace(connectionString))
     {
+        webApp.Logger.LogWarning("Skipping development database initialization because no connection string is configured");
         return;
     }
 

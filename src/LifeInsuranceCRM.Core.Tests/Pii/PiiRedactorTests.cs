@@ -17,6 +17,27 @@ public class PiiRedactorTests
 
         Assert.DoesNotContain(secret, redacted, StringComparison.Ordinal);
         Assert.Contains(TelemetryConstants.RedactedPlaceholder, redacted);
+        Assert.DoesNotContain($"{TelemetryConstants.RedactedPlaceholder}]", redacted);
+    }
+
+    [Fact]
+    public void Redact_QuotedJsonKeepsQuotesAroundPlaceholder()
+    {
+        var redacted = PiiRedactor.Redact("""{"DateOfBirth":"1950-06-15","MedicareNumber":"1EG4-TE5-MK72"}""");
+
+        Assert.Equal(
+            """{"DateOfBirth":"[REDACTED]","MedicareNumber":"[REDACTED]"}""",
+            redacted);
+    }
+
+    [Fact]
+    public void Redact_IsIdempotent_DoesNotStackClosingBrackets()
+    {
+        var once = PiiRedactor.Redact("""{"DateOfBirth":"1950-06-15","MedicareNumber":"1EG4-TE5-MK72"}""");
+        var twice = PiiRedactor.Redact(once);
+
+        Assert.Equal(once, twice);
+        Assert.DoesNotContain("[REDACTED]]", twice);
     }
 
     [Fact]
