@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LifeInsuranceCRM.Core\LifeInsuranceCRM.Core.csproj" />
+    <ProjectReference Include="..\LifeInsuranceCRM.Utilities\LifeInsuranceCRM.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

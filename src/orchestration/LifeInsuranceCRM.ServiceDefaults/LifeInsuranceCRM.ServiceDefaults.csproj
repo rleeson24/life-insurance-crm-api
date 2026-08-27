@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\main\LifeInsuranceCRM.Core\LifeInsuranceCRM.Core.csproj" />
+    <ProjectReference Include="..\..\main\LifeInsuranceCRM.Utilities\LifeInsuranceCRM.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

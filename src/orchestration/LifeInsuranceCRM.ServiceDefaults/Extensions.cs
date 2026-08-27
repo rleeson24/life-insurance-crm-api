@@ -1,13 +1,17 @@
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using LifeInsuranceCRM.Core.Config;
+using LifeInsuranceCRM.ServiceDefaults;
+using LifeInsuranceCRM.Utilities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
@@ -18,11 +22,11 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
-    private const string ActivitySourceName = "LifeInsuranceCRM";
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
+        builder.Services.AddPiiSanitizingLoggerFactory();
         builder.AddDefaultHealthChecks();
         builder.Services.AddServiceDiscovery();
 
@@ -37,10 +41,14 @@ public static class Extensions
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        var isDevelopment = builder.Environment.IsDevelopment();
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
-            logging.IncludeFormattedMessage = true;
+            logging.IncludeFormattedMessage = isDevelopment;
             logging.IncludeScopes = true;
+            logging.ParseStateValues = true;
+            logging.AddProcessor(new PiiRedactingLogProcessor());
         });
 
         builder.Services.AddOpenTelemetry()
@@ -52,14 +60,26 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(ActivitySourceName)
+                tracing.AddSource(TelemetryConstants.ActivitySourceName)
                     .AddSource(builder.Environment.ApplicationName)
                     .AddAspNetCoreInstrumentation(options =>
                         options.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
                             && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath))
                     .AddHttpClientInstrumentation()
-                    .AddSqlClientInstrumentation();
+                    .AddSqlClientInstrumentation(options =>
+                    {
+                        // Query parameter capture stays off (library default). A processor
+                        // still strips db.query.text / db.query.parameter.* before export.
+                        options.EnrichWithSqlCommand = (activity, command) =>
+                        {
+                            if (CommandContainsPhi(command))
+                            {
+                                activity.SetTag(TelemetryConstants.ContainsPhiSqlTag, true);
+                            }
+                        };
+                    })
+                    .AddProcessor(new SqlStatementRedactingProcessor(omitSqlText: !isDevelopment));
             });
 
         builder.AddOpenTelemetryExporters();
@@ -111,5 +131,19 @@ public static class Extensions
         }).AllowAnonymous();
 
         return app;
+    }
+
+    private static bool CommandContainsPhi(object command)
+    {
+        var text = command switch
+        {
+            SqlCommand sql => sql.CommandText,
+            System.Data.Common.DbCommand db => db.CommandText,
+            _ => command.ToString(),
+        };
+
+        return !string.IsNullOrEmpty(text)
+            && (text.Contains("MedicareNumber", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("DateOfBirth", StringComparison.OrdinalIgnoreCase));
     }
 }

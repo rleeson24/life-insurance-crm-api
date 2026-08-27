@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>life-insurance-crm-api-dev</UserSecretsId>
     <RootNamespace>LifeInsuranceCRM.API</RootNamespace>
-    <DefaultItemExcludes>$(DefaultItemExcludes);LifeInsuranceCRM.Core/**;LifeInsuranceCRM.Data/**;LifeInsuranceCRM.Utilities/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);LifeInsuranceCRM.Core/**;LifeInsuranceCRM.Data/**;LifeInsuranceCRM.Utilities/**;LifeInsuranceCRM.Providers/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
