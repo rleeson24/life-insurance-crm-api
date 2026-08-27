@@ -12,5 +12,7 @@ public sealed class CurrentUserDto
 
     public Guid TenantId { get; init; }
 
+    public string? TenantName { get; init; }
+
     public string Role { get; init; } = string.Empty;
 }
