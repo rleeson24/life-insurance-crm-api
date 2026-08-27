@@ -15,10 +15,12 @@ public sealed class ActorResolutionMiddleware
     private const string ObjectIdClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
 
     private readonly RequestDelegate _next;
+    private readonly ILogger<ActorResolutionMiddleware> _logger;
 
-    public ActorResolutionMiddleware(RequestDelegate next)
+    public ActorResolutionMiddleware(RequestDelegate next, ILogger<ActorResolutionMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(
@@ -39,6 +41,7 @@ public sealed class ActorResolutionMiddleware
                     problemDetailsFactory,
                     securityEventRecorder,
                     AuthSecurityEventTypes.TenantAccessDenied,
+                    userId: null,
                     "Token is missing a GUID oid claim. NameIdentifier/sub on personal Microsoft accounts is not a user id.",
                     cancellationToken: context.RequestAborted);
                 return;
@@ -58,6 +61,7 @@ public sealed class ActorResolutionMiddleware
                     problemDetailsFactory,
                     securityEventRecorder,
                     AuthSecurityEventTypes.TenantAccessDenied,
+                    userId,
                     "Tenant not found for user",
                     cancellationToken: context.RequestAborted);
                 return;
@@ -70,6 +74,7 @@ public sealed class ActorResolutionMiddleware
                     problemDetailsFactory,
                     securityEventRecorder,
                     AuthSecurityEventTypes.Forbidden,
+                    userId,
                     "User account is inactive",
                     cancellationToken: context.RequestAborted);
                 return;
@@ -82,6 +87,7 @@ public sealed class ActorResolutionMiddleware
                     problemDetailsFactory,
                     securityEventRecorder,
                     AuthSecurityEventTypes.TenantAccessDenied,
+                    userId,
                     "Organization is inactive",
                     cancellationToken: context.RequestAborted);
                 return;
@@ -129,14 +135,21 @@ public sealed class ActorResolutionMiddleware
         return false;
     }
 
-    private static async Task WriteForbiddenAsync(
+    private async Task WriteForbiddenAsync(
         HttpContext context,
         IProblemDetailsFactory problemDetailsFactory,
         IAuthSecurityEventRecorder securityEventRecorder,
         string eventType,
+        Guid? userId,
         string failureReason,
         CancellationToken cancellationToken)
     {
+        _logger.LogWarning(
+            "Access denied ({EventType}) for user {UserId}: {FailureReason}",
+            eventType,
+            userId,
+            failureReason);
+
         context.Items["TenantAccessDeniedRecorded"] = true;
         await securityEventRecorder.RecordAsync(
             eventType,

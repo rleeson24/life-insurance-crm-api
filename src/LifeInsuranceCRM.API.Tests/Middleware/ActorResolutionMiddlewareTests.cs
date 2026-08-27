@@ -9,6 +9,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -36,7 +37,7 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        await new ActorResolutionMiddleware(next).InvokeAsync(
+        await CreateMiddleware(next).InvokeAsync(
             context,
             actorTracker,
             organizationUserRepository.Object,
@@ -70,7 +71,7 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        await new ActorResolutionMiddleware(next).InvokeAsync(
+        await CreateMiddleware(next).InvokeAsync(
             context,
             new LifeInsuranceCRM.API.Auth.ActorTracker(),
             organizationUserRepository.Object,
@@ -106,7 +107,7 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        await new ActorResolutionMiddleware(next).InvokeAsync(
+        await CreateMiddleware(next).InvokeAsync(
             context,
             actorTracker,
             organizationUserRepository.Object,
@@ -140,7 +141,7 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        await new ActorResolutionMiddleware(next).InvokeAsync(
+        await CreateMiddleware(next).InvokeAsync(
             context,
             actorTracker,
             organizationUserRepository.Object,
@@ -174,7 +175,7 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        await new ActorResolutionMiddleware(next).InvokeAsync(
+        await CreateMiddleware(next).InvokeAsync(
             context,
             actorTracker,
             organizationUserRepository.Object,
@@ -204,7 +205,7 @@ public class ActorResolutionMiddlewareTests
             return Task.CompletedTask;
         };
 
-        await new ActorResolutionMiddleware(next).InvokeAsync(
+        await CreateMiddleware(next).InvokeAsync(
             context,
             new LifeInsuranceCRM.API.Auth.ActorTracker(),
             organizationUserRepository.Object,
@@ -219,6 +220,9 @@ public class ActorResolutionMiddlewareTests
             r => r.GetUserContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
+
+    private static ActorResolutionMiddleware CreateMiddleware(RequestDelegate next) =>
+        new(next, NullLogger<ActorResolutionMiddleware>.Instance);
 
     private static DefaultHttpContext CreateAuthenticatedContext(params Claim[] claims)
     {

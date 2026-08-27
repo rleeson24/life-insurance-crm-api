@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Utilities;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace LifeInsuranceCRM.Core.Services;
 
@@ -14,17 +15,20 @@ public sealed class AuthSecurityEventRecorder : IAuthSecurityEventRecorder
     private readonly IActorTracker _actorTracker;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly INowProvider _nowProvider;
+    private readonly ILogger<AuthSecurityEventRecorder> _logger;
 
     public AuthSecurityEventRecorder(
         IAuthSecurityEventRepository repository,
         IActorTracker actorTracker,
         IHttpContextAccessor httpContextAccessor,
-        INowProvider nowProvider)
+        INowProvider nowProvider,
+        ILogger<AuthSecurityEventRecorder> logger)
     {
         _repository = repository;
         _actorTracker = actorTracker;
         _httpContextAccessor = httpContextAccessor;
         _nowProvider = nowProvider;
+        _logger = logger;
     }
 
     public async Task RecordAsync(
@@ -58,9 +62,10 @@ public sealed class AuthSecurityEventRecorder : IAuthSecurityEventRecorder
         {
             await _repository.RecordAsync(securityEvent, cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // Never fail the request because audit insert failed; telemetry still captures the trace.
+            // Never fail the request because audit insert failed; the log is the fallback record.
+            _logger.LogError(ex, "Failed to persist security event {EventType}", eventType);
         }
     }
 

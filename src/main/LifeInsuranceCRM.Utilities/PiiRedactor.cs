@@ -60,15 +60,46 @@ public static class PiiRedactor
 
         try
         {
-            var redacted = NamedPhiValues.Replace(
-                value,
-                match => $"{match.Groups["prefix"].Value}{match.Groups["sep"].Value}{TelemetryConstants.RedactedPlaceholder}");
+            var redacted = NamedPhiValues.Replace(value, ReplaceNamedPhiValue);
             return MedicareBeneficiaryId.Replace(redacted, TelemetryConstants.RedactedPlaceholder);
         }
         catch (RegexMatchTimeoutException)
         {
             return TelemetryConstants.RedactedPlaceholder;
         }
+    }
+
+    private static string ReplaceNamedPhiValue(Match match)
+    {
+        var originalValue = match.Groups["value"].Value;
+        if (IsAlreadyRedacted(originalValue))
+        {
+            return match.Value;
+        }
+
+        return $"{match.Groups["prefix"].Value}{match.Groups["sep"].Value}{WrapPlaceholder(originalValue)}";
+    }
+
+    private static bool IsAlreadyRedacted(string value)
+    {
+        var placeholder = TelemetryConstants.RedactedPlaceholder;
+        return value.Equals(placeholder, StringComparison.Ordinal)
+            || value.Equals($"\"{placeholder}\"", StringComparison.Ordinal)
+            || value.Equals($"'{placeholder}'", StringComparison.Ordinal)
+            || value.StartsWith("[REDACTED", StringComparison.Ordinal);
+    }
+
+    private static string WrapPlaceholder(string originalValue)
+    {
+        var placeholder = TelemetryConstants.RedactedPlaceholder;
+        if (originalValue.Length >= 2
+            && ((originalValue[0] == '"' && originalValue[^1] == '"')
+                || (originalValue[0] == '\'' && originalValue[^1] == '\'')))
+        {
+            return $"{originalValue[0]}{placeholder}{originalValue[^1]}";
+        }
+
+        return placeholder;
     }
 
     public static Exception ToSanitizedException(Exception exception)

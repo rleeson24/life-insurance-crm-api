@@ -43,13 +43,32 @@ public sealed class DevelopmentDatabaseInitializer : IDevelopmentDatabaseInitial
         END
         """;
 
+    private readonly ILogger<DevelopmentDatabaseInitializer> _logger;
+
+    public DevelopmentDatabaseInitializer(ILogger<DevelopmentDatabaseInitializer> logger)
+    {
+        _logger = logger;
+    }
+
     public async Task InitializeAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        _logger.LogInformation("Initializing development database");
 
-        await ExecuteNonQueryAsync(connection, AddRoleColumnSql, cancellationToken);
-        await ExecuteNonQueryAsync(connection, EnsureDevUserSql, cancellationToken);
+        try
+        {
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            await ExecuteNonQueryAsync(connection, AddRoleColumnSql, cancellationToken);
+            await ExecuteNonQueryAsync(connection, EnsureDevUserSql, cancellationToken);
+
+            _logger.LogInformation("Development database initialization completed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Development database initialization failed");
+            throw;
+        }
     }
 
     private async Task ExecuteNonQueryAsync(
