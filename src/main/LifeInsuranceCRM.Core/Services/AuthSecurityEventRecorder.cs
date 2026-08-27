@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Entities;
+using LifeInsuranceCRM.Utilities;
 using Microsoft.AspNetCore.Http;
 
 namespace LifeInsuranceCRM.Core.Services;
@@ -46,7 +47,7 @@ public sealed class AuthSecurityEventRecorder : IAuthSecurityEventRecorder
             UserId = _actorTracker.UserId,
             UserEmail = _actorTracker.UserEmail,
             Success = success,
-            FailureReason = Truncate(failureReason, 256),
+            FailureReason = Truncate(PiiRedactor.Redact(failureReason), 256),
             IpAddress = Truncate(httpContext?.Connection.RemoteIpAddress?.ToString(), 45),
             UserAgent = Truncate(httpContext?.Request.Headers.UserAgent.ToString(), 512),
             CorrelationId = Truncate(correlationId, 64),

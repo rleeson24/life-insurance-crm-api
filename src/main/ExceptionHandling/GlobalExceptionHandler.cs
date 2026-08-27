@@ -22,7 +22,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Unhandled exception");
+        _logger.LogError(PiiRedactor.ToSanitizedException(exception), "Unhandled exception");
 
         var (status, title, detail, errorCode) = exception switch
         {

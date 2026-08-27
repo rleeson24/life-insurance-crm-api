@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Utilities;
 using Microsoft.Data.SqlClient;
 
 namespace LifeInsuranceCRM.Data.Repositories;
@@ -124,6 +126,7 @@ public sealed class ClientRepository : IClientRepository
             """;
 
         Client? client = null;
+        MarkCurrentSpanContainsPhiSql();
         await _dbExecutor.ExecuteReaderAsync(
             sql,
             async (reader, ct) =>
@@ -146,6 +149,7 @@ public sealed class ClientRepository : IClientRepository
         CancellationToken cancellationToken = default)
     {
         var clientId = Guid.NewGuid();
+        MarkCurrentSpanContainsPhiSql();
         const string sql = """
             INSERT INTO dbo.Clients (
                 ClientId, TenantId, FirstName, LastName, LegalName, HouseholdName, PrimaryPhone,
@@ -178,6 +182,7 @@ public sealed class ClientRepository : IClientRepository
         AuditStamp audit,
         CancellationToken cancellationToken = default)
     {
+        MarkCurrentSpanContainsPhiSql();
         const string sql = """
             UPDATE dbo.Clients SET
                 FirstName = @FirstName, LastName = @LastName, LegalName = @LegalName,
@@ -348,4 +353,7 @@ public sealed class ClientRepository : IClientRepository
 
         return parameters.ToArray();
     }
+
+    private static void MarkCurrentSpanContainsPhiSql() =>
+        Activity.Current?.SetTag(TelemetryConstants.ContainsPhiSqlTag, true);
 }
