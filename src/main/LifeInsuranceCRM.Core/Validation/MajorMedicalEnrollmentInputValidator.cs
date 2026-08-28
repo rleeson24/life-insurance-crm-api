@@ -20,7 +20,6 @@ public sealed class MajorMedicalEnrollmentInputValidator : IMajorMedicalEnrollme
     {
         var validation = ValidateFields(
             model.PlanName,
-            model.HealthReimbursementArrangement,
             model.EnrollmentPlatform,
             model.EnrollmentLocation,
             model.Notes);
@@ -36,7 +35,6 @@ public sealed class MajorMedicalEnrollmentInputValidator : IMajorMedicalEnrollme
     {
         var validation = ValidateFields(
             model.PlanName,
-            model.HealthReimbursementArrangement,
             model.EnrollmentPlatform,
             model.EnrollmentLocation,
             model.Notes);
@@ -50,7 +48,6 @@ public sealed class MajorMedicalEnrollmentInputValidator : IMajorMedicalEnrollme
 
     private ProcessResponse<bool> ValidateFields(
         string? planName,
-        string? healthReimbursementArrangement,
         string? enrollmentPlatform,
         string? enrollmentLocation,
         string? notes)
@@ -58,14 +55,6 @@ public sealed class MajorMedicalEnrollmentInputValidator : IMajorMedicalEnrollme
         if (ExceedsMaxLength(planName, FieldMaxLength))
         {
             return FieldTooLong("Plan name", ClientErrorCodes.PlanNameTooLong, FieldMaxLength);
-        }
-
-        if (ExceedsMaxLength(healthReimbursementArrangement, FieldMaxLength))
-        {
-            return FieldTooLong(
-                "Health reimbursement arrangement",
-                ClientErrorCodes.HealthReimbursementArrangementTooLong,
-                FieldMaxLength);
         }
 
         if (ExceedsMaxLength(enrollmentPlatform, FieldMaxLength))

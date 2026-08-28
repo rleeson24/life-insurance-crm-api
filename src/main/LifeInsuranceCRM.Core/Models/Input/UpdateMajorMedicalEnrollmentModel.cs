@@ -13,7 +13,7 @@ public sealed record UpdateMajorMedicalEnrollmentModel
     public string? PlanName { get; init; }
     public DateOnly? CoverageStartDate { get; init; }
     public bool IsNewEnrollment { get; init; }
-    public string? HealthReimbursementArrangement { get; init; }
+    public bool HealthReimbursementArrangement { get; init; }
     public string? EnrollmentPlatform { get; init; }
     public string? EnrollmentLocation { get; init; }
     public string? Notes { get; init; }
