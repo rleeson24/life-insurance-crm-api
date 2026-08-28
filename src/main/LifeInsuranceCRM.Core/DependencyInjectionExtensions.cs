@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.UseCases.OrganizationUsers;
+using LifeInsuranceCRM.Core.UseCases.PlanNames;
 using LifeInsuranceCRM.Core.UseCases.Tenants;
 using LifeInsuranceCRM.Core.Validation;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISecondaryEnrollmentInputValidator, SecondaryEnrollmentInputValidator>();
         services.AddScoped<IOrganizationUserInputValidator, OrganizationUserInputValidator>();
         services.AddScoped<ITenantInputValidator, TenantInputValidator>();
+        services.AddScoped<IPlanNameInputValidator, PlanNameInputValidator>();
+        services.AddScoped<IPlanNameMapper, PlanNameMapper>();
         return services;
     }
 
@@ -34,6 +37,7 @@ public static class DependencyInjectionExtensions
         services.AddClientsUseCases();
         services.AddOrganizationUsersUseCases();
         services.AddTenantsUseCases();
+        services.AddPlanNamesUseCases();
         return services;
     }
 }
