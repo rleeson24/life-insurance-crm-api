@@ -2,6 +2,11 @@ IF SCHEMA_ID(N'migrate') IS NULL
     EXEC(N'CREATE SCHEMA migrate;');
 GO
 
+-- Drop the policy before the function; SQL Server will not DROP FUNCTION while TenantPolicy references it.
+IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'TenantPolicy')
+    DROP SECURITY POLICY dbo.TenantPolicy;
+GO
+
 IF OBJECT_ID(N'dbo.fn_TenantFilter', N'IF') IS NOT NULL
     DROP FUNCTION dbo.fn_TenantFilter;
 GO
@@ -12,10 +17,6 @@ WITH SCHEMABINDING
 AS
 RETURN SELECT 1 AS fn_TenantFilter_Result
 WHERE @TenantId = TRY_CAST(SESSION_CONTEXT(N'TenantId') AS uniqueidentifier);
-GO
-
-IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'TenantPolicy')
-    DROP SECURITY POLICY dbo.TenantPolicy;
 GO
 
 CREATE SECURITY POLICY dbo.TenantPolicy

@@ -6,6 +6,9 @@ internal static class SqlReaderExtensions
 {
     public static Guid GetGuid(this SqlDataReader reader, string name) => reader.GetGuid(reader.GetOrdinal(name));
 
+    public static short GetInt16(this SqlDataReader reader, string name) =>
+        reader.GetInt16(reader.GetOrdinal(name));
+
     public static string? GetNullableString(this SqlDataReader reader, string name)
     {
         var ordinal = reader.GetOrdinal(name);
