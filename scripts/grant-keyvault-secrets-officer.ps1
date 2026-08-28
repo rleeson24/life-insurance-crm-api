@@ -1,7 +1,7 @@
 # Grants Key Vault Secrets Officer on the vault in a resource group.
 # RG Owner/Contributor cannot list or set secrets when the vault uses RBAC.
 param(
-    [string]$ResourceGroup = 'rg-licrm-dev',
+    [string]$ResourceGroup = 'rg-bbcrm-dev',
     [string]$VaultName = '',
     [string]$PrincipalId = '',
     [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee'

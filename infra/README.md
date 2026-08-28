@@ -59,10 +59,10 @@ Override any value in `infra/parameters/*.bicepparam` or at deploy time, e.g. `-
 
 1. Azure subscription and `az` CLI logged in
 2. **Canonical subscription:** `605a6796-5cf0-4a61-80f0-ff2d484360ee` (Primary). The deploy script switches to this subscription automatically.
-3. Resource group per environment, e.g. `rg-licrm-dev` (can be in any region; resources use the `location` parameter)
+3. Resource group per environment, e.g. `rg-bbcrm-dev` (can be in any region; resources use the `location` parameter)
 4. GitHub repository environments: `dev`, `prod`
 
-SQL server, ACR, and Key Vault names are **globally unique** across all of Azure. Bicep generates names from the subscription + resource group ID so a new `rg-licrm-dev` never collides with resources in another subscription. When migrating existing servers/registries into this subscription, set `sqlServerNameOverride` / `acrNameOverride` in the parameter file.
+SQL server, ACR, and Key Vault names are **globally unique** across all of Azure. Bicep generates names from the subscription + resource group ID so a new `rg-bbcrm-dev` never collides with resources in another subscription. When migrating existing servers/registries into this subscription, set `sqlServerNameOverride` / `acrNameOverride` in the parameter file.
 
 ### Pick a region where Azure SQL is allowed
 
@@ -83,7 +83,7 @@ Default parameter files use **`centralus`**. Override at deploy time if needed:
 ## First-time deploy (local)
 
 ```powershell
-az group create --name rg-licrm-dev --location centralus
+az group create --name rg-bbcrm-dev --location centralus
 ```
 
 **Safer password passing** — `az` does not accept a JSON `@parameters` file together with a `.bicepparam` file. Use the helper script (recommended):
@@ -99,7 +99,7 @@ Copy-Item infra/parameters/dev.bicepparam infra/parameters/dev.local.bicepparam
 # Edit dev.local.bicepparam: set sqlAdministratorLoginPassword to a strong value (do not commit)
 
 az deployment group create `
-  --resource-group rg-licrm-dev `
+  --resource-group rg-bbcrm-dev `
   --template-file infra/main.bicep `
   --parameters infra/parameters/dev.local.bicepparam
 
@@ -120,15 +120,15 @@ Key Vault names are **global**. Deleting the resource group soft-deletes the vau
 Check soft-deleted vaults:
 
 ```powershell
-az keyvault list-deleted --query "[?contains(name, 'licrm')]" -o table
+az keyvault list-deleted --query "[?contains(name, 'bbcrm')]" -o table
 ```
 
-Bicep now generates a unique vault name per resource group instance (hash uses the resource group **ID**, not its name, so recreating `rg-licrm-dev` gets a new vault name). Purge protection stays **enabled** (Azure does not allow turning it off once set).
+Bicep now generates a unique vault name per resource group instance (hash uses the resource group **ID**, not its name, so recreating `rg-bbcrm-dev` gets a new vault name). Purge protection stays **enabled** (Azure does not allow turning it off once set).
 
 If purge protection is **disabled** on a deleted vault, you can purge manually:
 
 ```powershell
-az keyvault purge --name licrm-dev-kv --location eastus2
+az keyvault purge --name bbcrm-dev-kv --location eastus2
 ```
 
 ### If a previous deploy failed partway
@@ -136,8 +136,8 @@ az keyvault purge --name licrm-dev-kv --location eastus2
 A failed run may leave some resources in the resource group. Re-run the same deploy command; Bicep will retry/create missing resources incrementally. If deployment state is stuck, check operations:
 
 ```powershell
-az deployment group list --resource-group rg-licrm-dev -o table
-az resource list --resource-group rg-licrm-dev -o table
+az deployment group list --resource-group rg-bbcrm-dev -o table
+az resource list --resource-group rg-bbcrm-dev -o table
 ```
 
 ## GitHub Actions setup

@@ -47,9 +47,9 @@ All LifeInsuranceCRM Azure resources deploy to subscription **`605a6796-5cf0-4a6
 .\scripts\deploy-infra-dev.ps1
 ```
 
-Note outputs (names are auto-generated on first deploy — copy from output, do not assume `licrm-dev-sql`):
+Note outputs (names are auto-generated on first deploy — copy from output, do not assume `bbcrm-dev-sql`):
 
-- `containerAppName` (e.g. `licrm-dev-api`) — SQL Entra user name
+- `containerAppName` (e.g. `bbcrm-dev-api`) — SQL Entra user name
 - `sqlServerName`, `sqlServerFqdn` — for grant script and connection config
 - `acrName`, `acrLoginServer` — for GitHub deploy workflow
 - `containerAppIdentityPrincipalId` — managed identity object ID
@@ -69,7 +69,7 @@ Set `sqlAzureAdAdministratorObjectId` in your `.bicepparam` to an Entra user or 
 Run as the SQL Entra administrator (the script sets you as Entra admin if none exists, then creates the database user):
 
 ```powershell
-.\scripts\grant-api-sql-access.ps1 -ResourceGroup rg-licrm-dev
+.\scripts\grant-api-sql-access.ps1 -ResourceGroup rg-bbcrm-dev
 ```
 
 If the SQL server is private-endpoint only, the script temporarily enables public access from your IP, runs T-SQL, then turns public access off again.
@@ -83,7 +83,7 @@ The vault uses **RBAC** (`enableRbacAuthorization: true`). Resource group Owner/
 For an existing vault (no full redeploy):
 
 ```powershell
-.\scripts\grant-keyvault-secrets-officer.ps1 -ResourceGroup rg-licrm-dev
+.\scripts\grant-keyvault-secrets-officer.ps1 -ResourceGroup rg-bbcrm-dev
 ```
 
 That assigns Secrets Officer to the signed-in user. Wait one to two minutes, then refresh the portal. Future local deploys (`deploy-infra-dev.ps1`) pass your object ID automatically. To keep the assignment in Bicep, set `keyVaultSecretsOfficerPrincipalId` in `infra/parameters/dev.bicepparam` (`az ad signed-in-user show --query id -o tsv`). That GUID is not a secret.
@@ -117,7 +117,7 @@ Redeploy or restart the Container App after adding secrets the API reads at star
 ## Verify
 
 ```powershell
-az containerapp logs show --name licrm-dev-api --resource-group rg-licrm-dev --follow
+az containerapp logs show --name bbcrm-dev-api --resource-group rg-bbcrm-dev --follow
 curl https://<containerAppFqdn>/health
 ```
 

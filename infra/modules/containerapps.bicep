@@ -79,15 +79,9 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      // Always register ACR + system identity. The first image is often the MCR
-      // hello-world placeholder; omitting this leaves later `az containerapp update
-      // --image` pulls unauthorized (ACR admin is disabled).
-      registries: [
-        {
-          server: acrLoginServer
-          identity: 'system'
-        }
-      ]
+      // Do not register ACR here. The system identity has no AcrPull until this
+      // app exists, so a first revision with registries hangs in Provisioning.
+      // deploy-api.yml runs `az containerapp registry set --identity system`.
     }
     template: {
       containers: [
@@ -98,7 +92,9 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          probes: [
+          // Hello-world listens on :80 and has no /alive or /health. API probes
+          // on that image leave the revision unhealthy until the operation expires.
+          probes: startsWith(containerImage, 'mcr.microsoft.com/azuredocs/containerapps-helloworld') ? [] : [
             {
               type: 'Liveness'
               httpGet: {
