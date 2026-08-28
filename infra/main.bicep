@@ -57,6 +57,9 @@ param sqlAzureAdAdministratorObjectId string = ''
 @description('Entra object ID of the user or group that sets Key Vault secrets. Required to view/edit secrets in the portal or CLI; RG Owner is not enough.')
 param keyVaultSecretsOfficerPrincipalId string = ''
 
+@description('Existing Key Vault Secrets Officer assignment GUID. Pin this when the assignment already exists so GitHub redeploys do not hit RoleAssignmentExists.')
+param keyVaultSecretsOfficerAssignmentName string = ''
+
 @description('Container image for the API. Use a placeholder until the first CI deploy pushes to ACR.')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
@@ -161,6 +164,7 @@ module keyVault 'modules/keyvault.bicep' = {
     tags: tags
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     secretsOfficerPrincipalId: keyVaultSecretsOfficerPrincipalId
+    secretsOfficerAssignmentName: keyVaultSecretsOfficerAssignmentName
   }
 }
 

@@ -15,6 +15,8 @@ param sqlAdministratorLoginPassword = ''
 param sqlAzureAdAdministratorObjectId = 'e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'
 // Entra object ID of the operator who sets vault secrets (az ad signed-in-user show --query id -o tsv).
 param keyVaultSecretsOfficerPrincipalId = 'e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'
+// Pin to the assignment already on the vault (created outside Bicep). A new GUID fails with RoleAssignmentExists.
+param keyVaultSecretsOfficerAssignmentName = '5aca9036-ca42-4c17-8a03-d2edd3acd9e3'
 
 // Minimal dev sizing — scale API to zero when idle; serverless SQL auto-pauses after 60 min idle
 param containerAppCpu = '0.25'

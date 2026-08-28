@@ -8,6 +8,17 @@ param privateEndpointSubnetId string
 @description('Entra object ID of a user or group that may list, read, and write vault secrets (data plane). Resource group Owner/Contributor does not grant this.')
 param secretsOfficerPrincipalId string = ''
 
+@description('Existing role assignment name (GUID). Set this when the assignment was created outside Bicep so redeploys update it instead of failing with RoleAssignmentExists.')
+param secretsOfficerAssignmentName string = ''
+
+@description('principalType for the secrets officer. Set this so GitHub OIDC deploys do not need Graph directory lookup.')
+@allowed([
+  'User'
+  'Group'
+  'ServicePrincipal'
+])
+param secretsOfficerPrincipalType string = 'User'
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
@@ -80,11 +91,14 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
 var keyVaultSecretsOfficerRoleId = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 
 resource secretsOfficerAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(secretsOfficerPrincipalId)) {
-  name: guid(keyVault.id, secretsOfficerPrincipalId, keyVaultSecretsOfficerRoleId)
+  name: !empty(secretsOfficerAssignmentName)
+    ? secretsOfficerAssignmentName
+    : guid(keyVault.id, secretsOfficerPrincipalId, keyVaultSecretsOfficerRoleId)
   scope: keyVault
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
     principalId: secretsOfficerPrincipalId
+    principalType: secretsOfficerPrincipalType
   }
 }
 
