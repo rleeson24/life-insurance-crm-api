@@ -20,8 +20,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IClientUseCaseHelpers, ClientUseCaseHelpers>();
         services.AddScoped<IClientInputValidator, ClientInputValidator>();
         services.AddScoped<IClientInteractionInputValidator, ClientInteractionInputValidator>();
-        services.AddScoped<IMedicareEnrollmentInputValidator, MedicareEnrollmentInputValidator>();
-        services.AddScoped<ISupplementalEnrollmentInputValidator, SupplementalEnrollmentInputValidator>();
+        services.AddScoped<IMajorMedicalEnrollmentInputValidator, MajorMedicalEnrollmentInputValidator>();
+        services.AddScoped<IDrugPlanEnrollmentInputValidator, DrugPlanEnrollmentInputValidator>();
+        services.AddScoped<ISecondaryEnrollmentInputValidator, SecondaryEnrollmentInputValidator>();
         services.AddScoped<IOrganizationUserInputValidator, OrganizationUserInputValidator>();
         services.AddScoped<ITenantInputValidator, TenantInputValidator>();
         return services;

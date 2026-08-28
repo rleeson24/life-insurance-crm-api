@@ -6,10 +6,12 @@ public static class ClientErrorCodes
     public const string ClientNotFound = "client.not_found";
     public const string InteractionIdInvalid = "client.interaction.id.invalid";
     public const string InteractionNotFound = "client.interaction.not_found";
-    public const string MedicareEnrollmentIdInvalid = "client.medicare_enrollment.id.invalid";
-    public const string MedicareEnrollmentNotFound = "client.medicare_enrollment.not_found";
-    public const string SupplementalEnrollmentIdInvalid = "client.supplemental_enrollment.id.invalid";
-    public const string SupplementalEnrollmentNotFound = "client.supplemental_enrollment.not_found";
+    public const string MajorMedicalEnrollmentIdInvalid = "client.major_medical_enrollment.id.invalid";
+    public const string MajorMedicalEnrollmentNotFound = "client.major_medical_enrollment.not_found";
+    public const string DrugPlanEnrollmentIdInvalid = "client.drug_plan_enrollment.id.invalid";
+    public const string DrugPlanEnrollmentNotFound = "client.drug_plan_enrollment.not_found";
+    public const string SecondaryEnrollmentIdInvalid = "client.secondary_enrollment.id.invalid";
+    public const string SecondaryEnrollmentNotFound = "client.secondary_enrollment.not_found";
     public const string ActorNotAuthenticated = "actor.not_authenticated";
     public const string FirstNameRequired = "client.first_name.required";
     public const string LastNameRequired = "client.last_name.required";
@@ -26,10 +28,13 @@ public static class ClientErrorCodes
     public const string NotesTooLong = "client.notes.too_long";
     public const string InteractionSummaryRequired = "client.interaction.summary.required";
     public const string InteractionSummaryTooLong = "client.interaction.summary.too_long";
-    public const string PlanNameTooLong = "client.medicare_enrollment.plan_name.too_long";
-    public const string PrescriptionDrugPlanTooLong = "client.medicare_enrollment.prescription_drug_plan.too_long";
-    public const string HealthReimbursementArrangementTooLong = "client.medicare_enrollment.hra.too_long";
-    public const string EnrollmentPlatformTooLong = "client.medicare_enrollment.platform.too_long";
-    public const string EnrollmentLocationTooLong = "client.medicare_enrollment.location.too_long";
-    public const string PlanOrCarrierNameTooLong = "client.supplemental_enrollment.plan_or_carrier_name.too_long";
+    public const string PlanNameTooLong = "client.major_medical_enrollment.plan_name.too_long";
+    public const string HealthReimbursementArrangementTooLong = "client.major_medical_enrollment.hra.too_long";
+    public const string EnrollmentPlatformTooLong = "client.major_medical_enrollment.platform.too_long";
+    public const string EnrollmentLocationTooLong = "client.major_medical_enrollment.location.too_long";
+    public const string DrugPlanPlanNameTooLong = "client.drug_plan_enrollment.plan_name.too_long";
+    public const string DrugPlanHealthReimbursementArrangementTooLong = "client.drug_plan_enrollment.hra.too_long";
+    public const string DrugPlanEnrollmentPlatformTooLong = "client.drug_plan_enrollment.platform.too_long";
+    public const string DrugPlanEnrollmentLocationTooLong = "client.drug_plan_enrollment.location.too_long";
+    public const string PlanOrCarrierNameTooLong = "client.secondary_enrollment.plan_or_carrier_name.too_long";
 }

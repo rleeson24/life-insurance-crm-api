@@ -8,7 +8,7 @@ public static class DatabaseConnectionStringResolver
 
     public static string? Resolve(IConfiguration configuration)
     {
-        var aspireConnectionString = configuration.GetConnectionString("LifeInsuranceCRM");
+        var aspireConnectionString = configuration.GetConnectionString("BrokerBook");
         if (!string.IsNullOrWhiteSpace(aspireConnectionString))
         {
             return aspireConnectionString;

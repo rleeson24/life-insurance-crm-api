@@ -4,7 +4,7 @@
 param(
     [string]$ResourceGroup = 'rg-licrm-dev',
     [string]$SqlServer = '',
-    [string]$Database = 'LifeInsuranceCRM',
+    [string]$Database = 'BrokerBook',
     [string]$ContainerAppName = 'licrm-dev-api',
     [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee',
     [switch]$SkipPublicAccessToggle

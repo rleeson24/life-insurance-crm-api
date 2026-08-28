@@ -28,7 +28,7 @@ param backupStorageRedundancy string = 'Local'
 @description('Enable long-term backup retention (weekly/monthly/yearly). Off in dev to limit storage cost.')
 param enableLongTermRetention bool = false
 
-var databaseName = 'LifeInsuranceCRM'
+var databaseName = 'BrokerBook'
 var isServerless = skuName == 'GP_S_Gen5'
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {

@@ -14,8 +14,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientInteractionRepository, ClientInteractionRepository>();
-        services.AddScoped<IMedicareEnrollmentRepository, MedicareEnrollmentRepository>();
-        services.AddScoped<ISupplementalEnrollmentRepository, SupplementalEnrollmentRepository>();
+        services.AddScoped<IMajorMedicalEnrollmentRepository, MajorMedicalEnrollmentRepository>();
+        services.AddScoped<IDrugPlanEnrollmentRepository, DrugPlanEnrollmentRepository>();
+        services.AddScoped<ISecondaryEnrollmentRepository, SecondaryEnrollmentRepository>();
         return services;
     }
 }

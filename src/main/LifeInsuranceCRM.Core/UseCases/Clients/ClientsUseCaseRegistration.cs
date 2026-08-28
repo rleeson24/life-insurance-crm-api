@@ -17,14 +17,18 @@ public static class ClientsUseCaseRegistration
         services.AddScoped<ICreateClientInteractionUseCase, CreateClientInteractionUseCase>();
         services.AddScoped<IUpdateClientInteractionUseCase, UpdateClientInteractionUseCase>();
         services.AddScoped<IDeleteClientInteractionUseCase, DeleteClientInteractionUseCase>();
-        services.AddScoped<IListMedicareEnrollmentsUseCase, ListMedicareEnrollmentsUseCase>();
-        services.AddScoped<ICreateMedicareEnrollmentUseCase, CreateMedicareEnrollmentUseCase>();
-        services.AddScoped<IUpdateMedicareEnrollmentUseCase, UpdateMedicareEnrollmentUseCase>();
-        services.AddScoped<IDeleteMedicareEnrollmentUseCase, DeleteMedicareEnrollmentUseCase>();
-        services.AddScoped<IListSupplementalEnrollmentsUseCase, ListSupplementalEnrollmentsUseCase>();
-        services.AddScoped<ICreateSupplementalEnrollmentUseCase, CreateSupplementalEnrollmentUseCase>();
-        services.AddScoped<IUpdateSupplementalEnrollmentUseCase, UpdateSupplementalEnrollmentUseCase>();
-        services.AddScoped<IDeleteSupplementalEnrollmentUseCase, DeleteSupplementalEnrollmentUseCase>();
+        services.AddScoped<IListMajorMedicalEnrollmentsUseCase, ListMajorMedicalEnrollmentsUseCase>();
+        services.AddScoped<ICreateMajorMedicalEnrollmentUseCase, CreateMajorMedicalEnrollmentUseCase>();
+        services.AddScoped<IUpdateMajorMedicalEnrollmentUseCase, UpdateMajorMedicalEnrollmentUseCase>();
+        services.AddScoped<IDeleteMajorMedicalEnrollmentUseCase, DeleteMajorMedicalEnrollmentUseCase>();
+        services.AddScoped<IListDrugPlanEnrollmentsUseCase, ListDrugPlanEnrollmentsUseCase>();
+        services.AddScoped<ICreateDrugPlanEnrollmentUseCase, CreateDrugPlanEnrollmentUseCase>();
+        services.AddScoped<IUpdateDrugPlanEnrollmentUseCase, UpdateDrugPlanEnrollmentUseCase>();
+        services.AddScoped<IDeleteDrugPlanEnrollmentUseCase, DeleteDrugPlanEnrollmentUseCase>();
+        services.AddScoped<IListSecondaryEnrollmentsUseCase, ListSecondaryEnrollmentsUseCase>();
+        services.AddScoped<ICreateSecondaryEnrollmentUseCase, CreateSecondaryEnrollmentUseCase>();
+        services.AddScoped<IUpdateSecondaryEnrollmentUseCase, UpdateSecondaryEnrollmentUseCase>();
+        services.AddScoped<IDeleteSecondaryEnrollmentUseCase, DeleteSecondaryEnrollmentUseCase>();
         services.AddScoped<IListFollowUpInteractionsUseCase, ListFollowUpInteractionsUseCase>();
         return services;
     }

@@ -23,8 +23,9 @@ public class GetClientDetailUseCaseTests : UseCaseTestBase<GetClientDetailUseCas
     private Mock<IActorTracker> ActorTracker => MockFor<IActorTracker>();
     private Mock<IClientRepository> ClientRepository => MockFor<IClientRepository>();
     private Mock<IClientInteractionRepository> ClientInteractionRepository => MockFor<IClientInteractionRepository>();
-    private Mock<IMedicareEnrollmentRepository> MedicareEnrollmentRepository => MockFor<IMedicareEnrollmentRepository>();
-    private Mock<ISupplementalEnrollmentRepository> SupplementalEnrollmentRepository => MockFor<ISupplementalEnrollmentRepository>();
+    private Mock<IMajorMedicalEnrollmentRepository> MajorMedicalEnrollmentRepository => MockFor<IMajorMedicalEnrollmentRepository>();
+    private Mock<IDrugPlanEnrollmentRepository> DrugPlanEnrollmentRepository => MockFor<IDrugPlanEnrollmentRepository>();
+    private Mock<ISecondaryEnrollmentRepository> SecondaryEnrollmentRepository => MockFor<ISecondaryEnrollmentRepository>();
 
     public GetClientDetailUseCaseTests()
     {
@@ -39,8 +40,9 @@ public class GetClientDetailUseCaseTests : UseCaseTestBase<GetClientDetailUseCas
             ActorTracker.Object,
             ClientRepository.Object,
             ClientInteractionRepository.Object,
-            MedicareEnrollmentRepository.Object,
-            SupplementalEnrollmentRepository.Object,
+            MajorMedicalEnrollmentRepository.Object,
+            DrugPlanEnrollmentRepository.Object,
+            SecondaryEnrollmentRepository.Object,
             new ClientMapper(),
             new ClientUseCaseHelpers());
 
@@ -59,12 +61,15 @@ public class GetClientDetailUseCaseTests : UseCaseTestBase<GetClientDetailUseCas
             ClientInteractionRepository
                 .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
                 .ReturnsAsync(Array.Empty<ClientInteraction>());
-            MedicareEnrollmentRepository
+            MajorMedicalEnrollmentRepository
                 .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
-                .ReturnsAsync(Array.Empty<MedicareEnrollment>());
-            SupplementalEnrollmentRepository
+                .ReturnsAsync(Array.Empty<MajorMedicalEnrollment>());
+            DrugPlanEnrollmentRepository
                 .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
-                .ReturnsAsync(Array.Empty<SupplementalEnrollment>());
+                .ReturnsAsync(Array.Empty<DrugPlanEnrollment>());
+            SecondaryEnrollmentRepository
+                .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
+                .ReturnsAsync(Array.Empty<SecondaryEnrollment>());
         }
 
         public async Task InitializeAsync()
@@ -110,12 +115,15 @@ public class GetClientDetailUseCaseTests : UseCaseTestBase<GetClientDetailUseCas
             ClientInteractionRepository
                 .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
                 .ReturnsAsync(Array.Empty<ClientInteraction>());
-            MedicareEnrollmentRepository
+            MajorMedicalEnrollmentRepository
                 .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
-                .ReturnsAsync(Array.Empty<MedicareEnrollment>());
-            SupplementalEnrollmentRepository
+                .ReturnsAsync(Array.Empty<MajorMedicalEnrollment>());
+            DrugPlanEnrollmentRepository
                 .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
-                .ReturnsAsync(Array.Empty<SupplementalEnrollment>());
+                .ReturnsAsync(Array.Empty<DrugPlanEnrollment>());
+            SecondaryEnrollmentRepository
+                .Setup(r => r.ListByClientIdAsync(_clientId, _ct))
+                .ReturnsAsync(Array.Empty<SecondaryEnrollment>());
         }
 
         public async Task InitializeAsync()
