@@ -88,7 +88,7 @@ Supported account types: **Accounts in this organizational directory only**.
 Entra admin center → **App registrations** → **New registration**.
 
 1. **Expose an API**
-   - Application ID URI: `api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6`.
+   - Application ID URI: `api://6c970234-fee3-4568-97d8-7d015c903368`.
   - Add scope `access_as_user`:
     - Who can consent: **Admins and users**
     - Admin consent display name: `Access BrokerBook API`
@@ -104,16 +104,16 @@ Map to API configuration (`AzureAd` section — store in Key Vault in Azure, nev
 | Config key         | Key Vault secret    | Value |
 | ------------------ | ------------------- | ----- |
 | `AzureAd:TenantId` | `AzureAd--TenantId` | Directory (tenant) ID |
-| `AzureAd:ClientId` | `AzureAd--ClientId` | **API** application (client) ID `2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6` (GUID only) |
-| `AzureAd:Audience` | `AzureAd--Audience` | Application ID URI `api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6` |
+| `AzureAd:ClientId` | `AzureAd--ClientId` | **API** application (client) ID `6c970234-fee3-4568-97d8-7d015c903368` (GUID only) |
+| `AzureAd:Audience` | `AzureAd--Audience` | Application ID URI `api://6c970234-fee3-4568-97d8-7d015c903368` |
 
 
 `AzureAd:Instance` is `https://login.microsoftonline.com/` in `appsettings.json`. Do not store it in Key Vault. `AzureAd:ClientId` is the **API** registration GUID, not the SPA and not the `api://` URI. Grant **Key Vault Secrets Officer** first (resource group Owner cannot set secrets — see [azure-runtime-auth.md](azure-runtime-auth.md) §4), then:
 
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--TenantId" --value "<tenant-id>"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "6c970234-fee3-4568-97d8-7d015c903368"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://6c970234-fee3-4568-97d8-7d015c903368"
 ```
 
 Restart the Container App so it reloads configuration. Runtime wiring is in [azure-runtime-auth.md](azure-runtime-auth.md).
@@ -135,7 +135,7 @@ MSAL uses:
 | ------------- | ----------------------------------------------------------------------------- |
 | SPA client ID | `VITE_AZURE_AD_CLIENT_ID`                                                     |
 | Tenant ID     | `VITE_AZURE_AD_TENANT_ID`                                                     |
-| API scope     | `VITE_AZURE_AD_API_SCOPE` (default `api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6/access_as_user`) |
+| API scope     | `VITE_AZURE_AD_API_SCOPE` (default `api://6c970234-fee3-4568-97d8-7d015c903368/access_as_user`) |
 | Redirect URI  | Current origin plus `/` (must match a URI registered above)                   |
 
 
@@ -144,8 +144,8 @@ Local: copy `src/.env.example` to `src/.env.local` (gitignored). The API validat
 ```powershell
 cd src/main
 dotnet user-secrets set "AzureAd:TenantId" "<tenant-id>"
-dotnet user-secrets set "AzureAd:ClientId" "2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
-dotnet user-secrets set "AzureAd:Audience" "api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
+dotnet user-secrets set "AzureAd:ClientId" "6c970234-fee3-4568-97d8-7d015c903368"
+dotnet user-secrets set "AzureAd:Audience" "api://6c970234-fee3-4568-97d8-7d015c903368"
 ```
 
 
@@ -266,8 +266,8 @@ Deploy workflows use GitHub Environments `dev` and `prod`. For `prod`:
 - [ ] CA-BLOCK-LEGACY on
 - [ ] CA-MFA-AZURE on
 - [ ] `BrokerBookCRM-API` and `BrokerBookCRM-SPA` are **two** registrations; SPA has no secret
-- [ ] API scope `api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6/access_as_user` exists; admin consent granted
+- [ ] API scope `api://6c970234-fee3-4568-97d8-7d015c903368/access_as_user` exists; admin consent granted
 - [ ] Key Vault has `AzureAd--TenantId`, `AzureAd--ClientId`, `AzureAd--Audience`
 - [ ] GitHub account 2FA enabled; no shared admins
 - [ ] `main` ruleset active on both repos with the CI jobs required
-- [ ] Test sign-in (after MSAL): token `aud` is `api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6`, `oid` matches `OrganizationUsers.UserId`
+- [ ] Test sign-in (after MSAL): token `aud` is `api://6c970234-fee3-4568-97d8-7d015c903368`, `oid` matches `OrganizationUsers.UserId`

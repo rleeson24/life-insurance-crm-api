@@ -96,8 +96,8 @@ After the API app registration exists ([entra-policies.md](entra-policies.md)):
 
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--TenantId" --value "<tenant-id>"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "6c970234-fee3-4568-97d8-7d015c903368"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://6c970234-fee3-4568-97d8-7d015c903368"
 ```
 
 Optional — App Insights connection string (Bicep already injects the env var; this is a Key Vault backup):
