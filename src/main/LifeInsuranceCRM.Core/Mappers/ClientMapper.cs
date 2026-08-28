@@ -9,9 +9,11 @@ public interface IClientMapper
 
     ClientInteractionDto ToDto(ClientInteraction interaction);
 
-    MedicareEnrollmentDto ToDto(MedicareEnrollment enrollment);
+    MajorMedicalEnrollmentDto ToDto(MajorMedicalEnrollment enrollment);
 
-    SupplementalEnrollmentDto ToDto(SupplementalEnrollment enrollment);
+    DrugPlanEnrollmentDto ToDto(DrugPlanEnrollment enrollment);
+
+    SecondaryEnrollmentDto ToDto(SecondaryEnrollment enrollment);
 }
 
 public sealed class ClientMapper : IClientMapper
@@ -54,14 +56,13 @@ public sealed class ClientMapper : IClientMapper
         UpdatedAt = interaction.UpdatedAt,
     };
 
-    public MedicareEnrollmentDto ToDto(MedicareEnrollment enrollment) => new()
+    public MajorMedicalEnrollmentDto ToDto(MajorMedicalEnrollment enrollment) => new()
     {
-        MedicareEnrollmentId = enrollment.MedicareEnrollmentId,
+        MajorMedicalEnrollmentId = enrollment.MajorMedicalEnrollmentId,
         ClientId = enrollment.ClientId,
         RecordedAt = enrollment.RecordedAt,
         IsActivePlan = enrollment.IsActivePlan,
         PlanName = enrollment.PlanName,
-        PrescriptionDrugPlan = enrollment.PrescriptionDrugPlan,
         CoverageStartDate = enrollment.CoverageStartDate,
         IsNewEnrollment = enrollment.IsNewEnrollment,
         HealthReimbursementArrangement = enrollment.HealthReimbursementArrangement,
@@ -72,9 +73,26 @@ public sealed class ClientMapper : IClientMapper
         UpdatedAt = enrollment.UpdatedAt,
     };
 
-    public SupplementalEnrollmentDto ToDto(SupplementalEnrollment enrollment) => new()
+    public DrugPlanEnrollmentDto ToDto(DrugPlanEnrollment enrollment) => new()
     {
-        SupplementalEnrollmentId = enrollment.SupplementalEnrollmentId,
+        DrugPlanEnrollmentId = enrollment.DrugPlanEnrollmentId,
+        ClientId = enrollment.ClientId,
+        RecordedAt = enrollment.RecordedAt,
+        IsActivePlan = enrollment.IsActivePlan,
+        PlanName = enrollment.PlanName,
+        CoverageStartDate = enrollment.CoverageStartDate,
+        IsNewEnrollment = enrollment.IsNewEnrollment,
+        HealthReimbursementArrangement = enrollment.HealthReimbursementArrangement,
+        EnrollmentPlatform = enrollment.EnrollmentPlatform,
+        EnrollmentLocation = enrollment.EnrollmentLocation,
+        Notes = enrollment.Notes,
+        CreatedAt = enrollment.CreatedAt,
+        UpdatedAt = enrollment.UpdatedAt,
+    };
+
+    public SecondaryEnrollmentDto ToDto(SecondaryEnrollment enrollment) => new()
+    {
+        SecondaryEnrollmentId = enrollment.SecondaryEnrollmentId,
         ClientId = enrollment.ClientId,
         RecordedAt = enrollment.RecordedAt,
         PlanOrCarrierName = enrollment.PlanOrCarrierName,

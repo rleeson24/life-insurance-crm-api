@@ -18,8 +18,9 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IClientRepository _clientRepository;
     private readonly IClientInteractionRepository _clientInteractionRepository;
-    private readonly IMedicareEnrollmentRepository _medicareEnrollmentRepository;
-    private readonly ISupplementalEnrollmentRepository _supplementalEnrollmentRepository;
+    private readonly IMajorMedicalEnrollmentRepository _majorMedicalEnrollmentRepository;
+    private readonly IDrugPlanEnrollmentRepository _drugPlanEnrollmentRepository;
+    private readonly ISecondaryEnrollmentRepository _secondaryEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
 
@@ -27,16 +28,18 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         IActorTracker actorTracker,
         IClientRepository clientRepository,
         IClientInteractionRepository clientInteractionRepository,
-        IMedicareEnrollmentRepository medicareEnrollmentRepository,
-        ISupplementalEnrollmentRepository supplementalEnrollmentRepository,
+        IMajorMedicalEnrollmentRepository majorMedicalEnrollmentRepository,
+        IDrugPlanEnrollmentRepository drugPlanEnrollmentRepository,
+        ISecondaryEnrollmentRepository secondaryEnrollmentRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _clientInteractionRepository = clientInteractionRepository;
-        _medicareEnrollmentRepository = medicareEnrollmentRepository;
-        _supplementalEnrollmentRepository = supplementalEnrollmentRepository;
+        _majorMedicalEnrollmentRepository = majorMedicalEnrollmentRepository;
+        _drugPlanEnrollmentRepository = drugPlanEnrollmentRepository;
+        _secondaryEnrollmentRepository = secondaryEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
     }
@@ -54,10 +57,11 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
 
         var clientTask = _clientRepository.GetByIdAsync(clientId, cancellationToken);
         var interactionsTask = _clientInteractionRepository.ListByClientIdAsync(clientId, cancellationToken);
-        var medicareTask = _medicareEnrollmentRepository.ListByClientIdAsync(clientId, cancellationToken);
-        var supplementalTask = _supplementalEnrollmentRepository.ListByClientIdAsync(clientId, cancellationToken);
+        var majorMedicalTask = _majorMedicalEnrollmentRepository.ListByClientIdAsync(clientId, cancellationToken);
+        var drugPlanTask = _drugPlanEnrollmentRepository.ListByClientIdAsync(clientId, cancellationToken);
+        var secondaryTask = _secondaryEnrollmentRepository.ListByClientIdAsync(clientId, cancellationToken);
 
-        await Task.WhenAll(clientTask, interactionsTask, medicareTask, supplementalTask);
+        await Task.WhenAll(clientTask, interactionsTask, majorMedicalTask, drugPlanTask, secondaryTask);
 
         var client = await clientTask;
         if (client is null)
@@ -72,8 +76,9 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         {
             Client = _clientMapper.ToDto(client),
             Interactions = (await interactionsTask).Select(_clientMapper.ToDto).ToList(),
-            MedicareEnrollments = (await medicareTask).Select(_clientMapper.ToDto).ToList(),
-            SupplementalEnrollments = (await supplementalTask).Select(_clientMapper.ToDto).ToList(),
+            MajorMedicalEnrollments = (await majorMedicalTask).Select(_clientMapper.ToDto).ToList(),
+            DrugPlanEnrollments = (await drugPlanTask).Select(_clientMapper.ToDto).ToList(),
+            SecondaryEnrollments = (await secondaryTask).Select(_clientMapper.ToDto).ToList(),
         };
 
         return ProcessResponse<ClientDetailDto>.Succeeded(detail);

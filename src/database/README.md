@@ -1,4 +1,4 @@
-# LifeInsuranceCRM Database Scripts
+# BrokerBook Database Scripts
 
 ## Layout
 
@@ -7,7 +7,7 @@
 
 ## Applying live scripts
 
-Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`009` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
+Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`010` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
 
 **Azure SQL** (private-endpoint server; uses your Entra login and briefly opens public access):
 
@@ -26,7 +26,7 @@ Do not pass `-IncludeSeed` on Azure. Map yourself afterward with `scripts/provis
 
 `apply-live-schema.cmd` is a wrapper for that local path.
 
-**Aspire:** Start `LifeInsuranceCRM.AppHost` (not the API project alone). On first database creation, AppHost runs the same live scripts via `WithCreationScript` (including the dev seed). The volume is persistent, so later files such as `009` are not replayed — run `apply-live-schema.ps1` against the local container if the schema is behind.
+**Aspire:** Start `LifeInsuranceCRM.AppHost` (not the API project alone). On first database creation, AppHost runs the same live scripts via `WithCreationScript` (including the dev seed). The volume is persistent, so later files such as `010` are not replayed — run `apply-live-schema.ps1` against the local container if the schema is behind.
 
 Standalone API: set `Database:ConnectionString` in `appsettings.Development.json`, or apply with the script above.
 
@@ -44,7 +44,7 @@ API sets `SESSION_CONTEXT('TenantId')` after JWT validation. `OrganizationUsers`
 
 ## Medicare dates
 
-Part A/B effective dates live on `Clients`. Plan coverage start dates live on `MedicareEnrollments.CoverageStartDate` — do not derive one from the other.
+Part A/B effective dates live on `Clients`. Plan coverage start dates live on `MajorMedicalEnrollments.CoverageStartDate` and `DrugPlanEnrollments.CoverageStartDate` — do not derive one from the other.
 
 ## Date and time
 

@@ -84,15 +84,15 @@ public static class FixtureExtensions
             .With(i => i.UpdatedByUserId, userId)
             .Create();
 
-    public static MedicareEnrollment CreateMedicareEnrollment(
+    public static MajorMedicalEnrollment CreateMajorMedicalEnrollment(
         this Fixture fixture,
         Guid enrollmentId,
         Guid clientId,
         Guid tenantId,
         Guid userId,
         DateTimeOffset timestamp) =>
-        fixture.Build<MedicareEnrollment>()
-            .With(e => e.MedicareEnrollmentId, enrollmentId)
+        fixture.Build<MajorMedicalEnrollment>()
+            .With(e => e.MajorMedicalEnrollmentId, enrollmentId)
             .With(e => e.ClientId, clientId)
             .With(e => e.TenantId, tenantId)
             .With(e => e.CreatedAt, timestamp)
@@ -101,15 +101,32 @@ public static class FixtureExtensions
             .With(e => e.UpdatedByUserId, userId)
             .Create();
 
-    public static SupplementalEnrollment CreateSupplementalEnrollment(
+    public static DrugPlanEnrollment CreateDrugPlanEnrollment(
         this Fixture fixture,
         Guid enrollmentId,
         Guid clientId,
         Guid tenantId,
         Guid userId,
         DateTimeOffset timestamp) =>
-        fixture.Build<SupplementalEnrollment>()
-            .With(e => e.SupplementalEnrollmentId, enrollmentId)
+        fixture.Build<DrugPlanEnrollment>()
+            .With(e => e.DrugPlanEnrollmentId, enrollmentId)
+            .With(e => e.ClientId, clientId)
+            .With(e => e.TenantId, tenantId)
+            .With(e => e.CreatedAt, timestamp)
+            .With(e => e.UpdatedAt, timestamp)
+            .With(e => e.CreatedByUserId, userId)
+            .With(e => e.UpdatedByUserId, userId)
+            .Create();
+
+    public static SecondaryEnrollment CreateSecondaryEnrollment(
+        this Fixture fixture,
+        Guid enrollmentId,
+        Guid clientId,
+        Guid tenantId,
+        Guid userId,
+        DateTimeOffset timestamp) =>
+        fixture.Build<SecondaryEnrollment>()
+            .With(e => e.SecondaryEnrollmentId, enrollmentId)
             .With(e => e.ClientId, clientId)
             .With(e => e.TenantId, tenantId)
             .With(e => e.CreatedAt, timestamp)

@@ -111,7 +111,7 @@ Daily development does **not** use Azure Key Vault:
 
 | Source | What it provides |
 |--------|------------------|
-| Aspire AppHost | `ConnectionStrings:LifeInsuranceCRM` |
+| Aspire AppHost | `ConnectionStrings:BrokerBook` |
 | `appsettings.Development.json` | Synthetic auth, CORS origin |
 | User secrets (`UserSecretsId` `life-insurance-crm-api-dev`) | Any local overrides |
 

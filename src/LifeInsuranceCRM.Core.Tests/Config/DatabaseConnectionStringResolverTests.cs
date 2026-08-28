@@ -11,10 +11,10 @@ public class DatabaseConnectionStringResolverTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:LifeInsuranceCRM"] = "Server=aspire;",
+                ["ConnectionStrings:BrokerBook"] = "Server=aspire;",
                 [$"{DatabaseOptions.SectionName}:ConnectionString"] = "Server=explicit;",
                 [$"{DatabaseOptions.SectionName}:Server"] = "prod-sql.database.windows.net",
-                [$"{DatabaseOptions.SectionName}:Name"] = "LifeInsuranceCRM",
+                [$"{DatabaseOptions.SectionName}:Name"] = "BrokerBook",
             })
             .Build();
 
@@ -31,7 +31,7 @@ public class DatabaseConnectionStringResolverTests
             {
                 [$"{DatabaseOptions.SectionName}:ConnectionString"] = "Server=explicit;",
                 [$"{DatabaseOptions.SectionName}:Server"] = "prod-sql.database.windows.net",
-                [$"{DatabaseOptions.SectionName}:Name"] = "LifeInsuranceCRM",
+                [$"{DatabaseOptions.SectionName}:Name"] = "BrokerBook",
             })
             .Build();
 
@@ -47,7 +47,7 @@ public class DatabaseConnectionStringResolverTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [$"{DatabaseOptions.SectionName}:Server"] = "licrm-dev-sql.database.windows.net",
-                [$"{DatabaseOptions.SectionName}:Name"] = "LifeInsuranceCRM",
+                [$"{DatabaseOptions.SectionName}:Name"] = "BrokerBook",
             })
             .Build();
 
@@ -56,7 +56,7 @@ public class DatabaseConnectionStringResolverTests
         Assert.Equal(
             DatabaseConnectionStringResolver.BuildManagedIdentityConnectionString(
                 "licrm-dev-sql.database.windows.net",
-                "LifeInsuranceCRM"),
+                "BrokerBook"),
             connectionString);
     }
 
@@ -75,10 +75,10 @@ public class DatabaseConnectionStringResolverTests
     {
         var connectionString = DatabaseConnectionStringResolver.BuildManagedIdentityConnectionString(
             "licrm-prod-sql.database.windows.net",
-            "LifeInsuranceCRM");
+            "BrokerBook");
 
         Assert.Contains($"Authentication={DatabaseConnectionStringResolver.ManagedIdentityAuthentication};", connectionString);
         Assert.Contains("Encrypt=True;", connectionString);
-        Assert.Contains("Initial Catalog=LifeInsuranceCRM;", connectionString);
+        Assert.Contains("Initial Catalog=BrokerBook;", connectionString);
     }
 }

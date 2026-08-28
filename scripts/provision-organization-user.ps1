@@ -9,11 +9,11 @@
 #
 # Local SQL (no Azure networking changes):
 #
-#   .\scripts\provision-organization-user.ps1 -ConnectionString "Server=localhost,1433;Database=LifeInsuranceCRM;User Id=sa;Password=...;TrustServerCertificate=True"
+#   .\scripts\provision-organization-user.ps1 -ConnectionString "Server=localhost,1433;Database=BrokerBook;User Id=sa;Password=...;TrustServerCertificate=True"
 param(
     [string]$ResourceGroup = 'rg-licrm-dev',
     [string]$SqlServer = '',
-    [string]$Database = 'LifeInsuranceCRM',
+    [string]$Database = 'BrokerBook',
     [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee',
     [string]$UserId = '',
     [string]$EmailAddress = '',

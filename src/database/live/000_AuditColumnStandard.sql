@@ -1,7 +1,7 @@
 /*
 Standard audit + soft-delete columns for live dbo tables.
-Include on: Tenants, Clients, ClientInteractions, MedicareEnrollments,
-SupplementalEnrollments, OrganizationUsers.
+Include on: Tenants, Clients, ClientInteractions, MajorMedicalEnrollments,
+SecondaryEnrollments, DrugPlanEnrollments, OrganizationUsers.
 
 All datetimeoffset columns store UTC only (offset +00:00). Use SYSUTCDATETIME()
 for defaults; application code uses INowProvider / DateTimeOffset.UtcNow.

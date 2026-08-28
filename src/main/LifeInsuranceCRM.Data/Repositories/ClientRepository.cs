@@ -51,7 +51,7 @@ public sealed class ClientRepository : IClientRepository
             SELECT
                 c.ClientId, c.FirstName, c.LastName, c.LegalName, c.PrimaryPhone,
                 c.IsActive, c.IsAcaClient, c.UpdatedAt,
-                (SELECT TOP 1 m.PlanName FROM dbo.MedicareEnrollments m
+                (SELECT TOP 1 m.PlanName FROM dbo.MajorMedicalEnrollments m
                  WHERE m.ClientId = c.ClientId AND m.IsDeleted = 0 AND m.IsActivePlan = 1
                  ORDER BY m.RecordedAt DESC) AS ActivePlanName,
                 (SELECT TOP 1 i.ContactedAt FROM dbo.ClientInteractions i

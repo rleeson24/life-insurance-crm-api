@@ -2,13 +2,13 @@ using LifeInsuranceCRM.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-const string databaseName = "LifeInsuranceCRM";
+const string databaseName = "BrokerBook";
 
 var sql = builder.AddSqlServer("sql")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
 
-var database = sql.AddDatabase("LifeInsuranceCRM", databaseName)
+var database = sql.AddDatabase("BrokerBook", databaseName)
     .WithCreationScript(LiveSchemaScripts.BuildCreationScript(databaseName));
 
 var api = builder.AddProject<Projects.LifeInsuranceCRM_API>("lifeinsurancecrm-api")

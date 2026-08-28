@@ -6,7 +6,7 @@ Production Container Apps authenticate to Azure SQL and Key Vault with the API's
 
 | Environment | SQL auth | Secrets |
 |-------------|----------|---------|
-| Local (Aspire) | `ConnectionStrings:LifeInsuranceCRM` from AppHost | User secrets / appsettings. Key Vault is skipped. |
+| Local (Aspire) | `ConnectionStrings:BrokerBook` from AppHost | User secrets / appsettings. Key Vault is skipped. |
 | Azure Container Apps | `Database:Server` + `Database:Name` → Active Directory Default | Key Vault via `KeyVault:VaultUri` + managed identity |
 
 Startup order (`Program.cs`):
@@ -127,7 +127,7 @@ Readiness should report SQL healthy once the Entra database user exists. Startup
 
 No Key Vault for daily Aspire work:
 
-- Run via Aspire AppHost (`ConnectionStrings:LifeInsuranceCRM`).
+- Run via Aspire AppHost (`ConnectionStrings:BrokerBook`).
 - Put non-Azure secrets in user secrets (`dotnet user-secrets`, id `life-insurance-crm-api-dev`).
 - Leave `KeyVault:VaultUri` empty. A URI set in Development is ignored unless managed identity is present or `KeyVault:AllowLocalAccess` is true.
 
