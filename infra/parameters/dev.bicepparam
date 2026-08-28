@@ -7,6 +7,7 @@ using '../main.bicep'
 param environment = 'dev'
 param location = 'centralus'
 param githubOwner = 'rleeson24'
+// GitHub repo names for OIDC subjects — must match GitHub. Azure resources use bbcrm-*.
 param githubRepository = 'life-insurance-crm-api'
 param githubClientRepository = 'life-insurance-crm-client'
 param sqlAdministratorLogin = 'sqladmin'

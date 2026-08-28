@@ -6,12 +6,14 @@ MFA and Conditional Access are **tenant settings**, not application code. The AP
 
 ## Policy matrix
 
-| ID | Policy | State | Applies to |
-|----|--------|-------|------------|
-| CA-MFA-ALL | Require MFA for all users | **Required now** | Azure portal, Microsoft 365, GitHub Entra SSO (when used), all cloud apps |
-| CA-BLOCK-LEGACY | Block legacy authentication | **Required now** | Exchange ActiveSync, IMAP, SMTP AUTH, other clients that cannot do MFA |
-| CA-MFA-AZURE | Require MFA for Azure management | **Required now** | Microsoft Azure Management (ARM / portal / CLI / PowerShell) |
+
+| ID                 | Policy                                                                         | State                  | Applies to                                                                          |
+| ------------------ | ------------------------------------------------------------------------------ | ---------------------- | ----------------------------------------------------------------------------------- |
+| CA-MFA-ALL         | Require MFA for all users                                                      | **Required now**       | Azure portal, Microsoft 365, GitHub Entra SSO (when used), all cloud apps           |
+| CA-BLOCK-LEGACY    | Block legacy authentication                                                    | **Required now**       | Exchange ActiveSync, IMAP, SMTP AUTH, other clients that cannot do MFA              |
+| CA-MFA-AZURE       | Require MFA for Azure management                                               | **Required now**       | Microsoft Azure Management (ARM / portal / CLI / PowerShell)                        |
 | CA-COMPLIANT-ADMIN | Require compliant or Microsoft Entra hybrid joined device for privileged roles | **Phase 2** (optional) | Global Administrator, Privileged Role Administrator, Owners of prod resource groups |
+
 
 Create these in **Microsoft Entra admin center → Protection → Conditional Access**. Assign to **All users**. Exclude only the documented break-glass accounts (see below). Do not exclude admin roles from MFA.
 
@@ -33,6 +35,8 @@ This covers Azure Portal, prod resource groups, and GitHub if the org uses Entra
 4. Conditions → Client apps: configure **Yes**; select **Exchange ActiveSync clients** and **Other clients**.
 5. Grant: **Block access**.
 6. Enable: **On**.
+
+
 
 ### CA-MFA-AZURE — Azure control plane
 
@@ -64,82 +68,91 @@ Keep **one or two** cloud-only emergency accounts:
 - No daily use, no mail client, no GitHub.
 - Monitor sign-ins in Entra → Monitoring → Sign-in logs.
 
+
+
 ## App registrations (separate API and SPA)
 
 Do **not** use one registration for both the API and the React client. The API is a resource that validates tokens; the SPA is a public client that requests them.
 
-| App | Account type | Secret | Purpose |
-|-----|--------------|--------|---------|
-| `LifeInsuranceCRM-API` | Single tenant | None (JWT validation only) | Audience for access tokens |
-| `LifeInsuranceCRM-SPA` | Single tenant | **None** (public SPA + PKCE) | MSAL login in the React app |
+
+| App                    | Account type  | Secret                       | Purpose                     |
+| ---------------------- | ------------- | ---------------------------- | --------------------------- |
+| `BrokerBookCRM-API` | Single tenant | None (JWT validation only)   | Audience for access tokens  |
+| `BrokerBookCRM-SPA` | Single tenant | **None** (public SPA + PKCE) | MSAL login in the React app |
+
 
 Supported account types: **Accounts in this organizational directory only**.
 
-### 1. API registration (`LifeInsuranceCRM-API`)
+### 1. API registration (`BrokerBookCRM-API`)
 
 Entra admin center → **App registrations** → **New registration**.
 
 1. **Expose an API**
-   - Application ID URI: `api://life-insurance-crm` (or `api://<api-application-client-id>`).
-   - Add scope `access_as_user`:
-     - Who can consent: **Admins and users**
-     - Admin consent display name: `Access LifeInsuranceCRM API`
-     - User consent display name: `Access the CRM as you`
-2. **Token configuration** → optional claims on the **Access** token: `email`, `preferred_username`.  
-   `ActorResolutionMiddleware` maps **`oid`** (or the mapped `http://schemas.microsoft.com/identity/claims/objectidentifier`) to `OrganizationUsers.UserId`, and email from `email` or `preferred_username`. Do **not** use `sub` / `NameIdentifier`: on personal Microsoft accounts that value is a pairwise opaque string (not a GUID) and cannot be stored as `UserId`. JWT Bearer `MapInboundClaims` is off so `oid` stays `oid`.
+   - Application ID URI: `api://6c970234-fee3-4568-97d8-7d015c903368`.
+  - Add scope `access_as_user`:
+    - Who can consent: **Admins and users**
+    - Admin consent display name: `Access BrokerBook API`
+    - User consent display name: `Access the CRM as you`
+2. **Token configuration** → optional claims on the **Access** token: `email`, `preferred_username`.
+  `ActorResolutionMiddleware` maps `oid` (or the mapped `http://schemas.microsoft.com/identity/claims/objectidentifier`) to `OrganizationUsers.UserId`, and email from `email` or `preferred_username`. Do **not** use `sub` / `NameIdentifier`: on personal Microsoft accounts that value is a pairwise opaque string (not a GUID) and cannot be stored as `UserId`. JWT Bearer `MapInboundClaims` is off so `oid` stays `oid`.
 3. **Authentication**: no SPA or public-client platform on this app. Implicit grant stays **off**.
 4. Copy **Application (client) ID** and **Directory (tenant) ID**.
 
 Map to API configuration (`AzureAd` section — store in Key Vault in Azure, never commit values):
 
-| Config key | Key Vault secret | Value |
-|------------|------------------|-------|
-| `AzureAd:Instance` | `AzureAd--Instance` | `https://login.microsoftonline.com/` |
-| `AzureAd:TenantId` | `AzureAd--TenantId` | Directory (tenant) ID |
-| `AzureAd:ClientId` | `AzureAd--ClientId` | **API** application (client) ID |
-| `AzureAd:Audience` | `AzureAd--Audience` | Application ID URI (`api://life-insurance-crm`) |
 
-`AzureAd:ClientId` is the **API** registration, not the SPA. Grant **Key Vault Secrets Officer** first (resource group Owner cannot set secrets — see [azure-runtime-auth.md](azure-runtime-auth.md) §4), then:
+| Config key         | Key Vault secret    | Value |
+| ------------------ | ------------------- | ----- |
+| `AzureAd:TenantId` | `AzureAd--TenantId` | Directory (tenant) ID |
+| `AzureAd:ClientId` | `AzureAd--ClientId` | **API** application (client) ID `6c970234-fee3-4568-97d8-7d015c903368` (GUID only) |
+| `AzureAd:Audience` | `AzureAd--Audience` | Application ID URI `api://6c970234-fee3-4568-97d8-7d015c903368` |
+
+
+`AzureAd:Instance` is `https://login.microsoftonline.com/` in `appsettings.json`. Do not store it in Key Vault. `AzureAd:ClientId` is the **API** registration GUID, not the SPA and not the `api://` URI. Grant **Key Vault Secrets Officer** first (resource group Owner cannot set secrets — see [azure-runtime-auth.md](azure-runtime-auth.md) §4), then:
 
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--TenantId" --value "<tenant-id>"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "<api-client-id>"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://life-insurance-crm"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "6c970234-fee3-4568-97d8-7d015c903368"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://6c970234-fee3-4568-97d8-7d015c903368"
 ```
 
 Restart the Container App so it reloads configuration. Runtime wiring is in [azure-runtime-auth.md](azure-runtime-auth.md).
 
-### 2. SPA registration (`LifeInsuranceCRM-SPA`)
+### 2. SPA registration (`BrokerBookCRM-SPA`)
 
-1. **New registration** → name `LifeInsuranceCRM-SPA` → single tenant.
+1. **New registration** → name `BrokerBookCRM-SPA` → single tenant.
 2. **Authentication** → **Add a platform** → **Single-page application**:
-   - `http://localhost:5387/` (Vite port in `life-insurance-crm-client/src/vite.config.ts`)
-   - Production SPA origin from Bicep output `clientRedirectUri` (exact origin plus trailing slash, e.g. `https://<name>.azurestaticapps.net/`)
+  - `http://localhost:5387/` (Vite port in the client repo `src/vite.config.ts`)
+  - Production SPA origin from Bicep output `clientRedirectUri` (exact origin plus trailing slash, e.g. `https://<name>.azurestaticapps.net/`)
 3. Implicit grant and hybrid flows: **off**. Auth code + PKCE only (MSAL default).
-4. **API permissions** → **Add a permission** → **My APIs** → `LifeInsuranceCRM-API` → delegated `access_as_user` → **Grant admin consent**.
+4. **API permissions** → **Add a permission** → **My APIs** → `BrokerBookCRM-API` → delegated `access_as_user` → **Grant admin consent**.
 5. No client secret. No certificates.
 
 MSAL uses:
 
-| Value | Source |
-|-------|--------|
-| SPA client ID | `VITE_AZURE_AD_CLIENT_ID` |
-| Tenant ID | `VITE_AZURE_AD_TENANT_ID` |
-| API scope | `VITE_AZURE_AD_API_SCOPE` (default `api://life-insurance-crm/access_as_user`) |
-| Redirect URI | Current origin plus `/` (must match a URI registered above) |
+
+| Value         | Source                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| SPA client ID | `VITE_AZURE_AD_CLIENT_ID`                                                     |
+| Tenant ID     | `VITE_AZURE_AD_TENANT_ID`                                                     |
+| API scope     | `VITE_AZURE_AD_API_SCOPE` (default `api://6c970234-fee3-4568-97d8-7d015c903368/access_as_user`) |
+| Redirect URI  | Current origin plus `/` (must match a URI registered above)                   |
+
 
 Local: copy `src/.env.example` to `src/.env.local` (gitignored). The API validates the same Entra tokens when `AzureAd:ClientId` and `AzureAd:TenantId` are set (user secrets locally, Key Vault in Azure); otherwise it keeps the synthetic development scheme.
 
 ```powershell
 cd src/main
 dotnet user-secrets set "AzureAd:TenantId" "<tenant-id>"
-dotnet user-secrets set "AzureAd:ClientId" "<api-client-id>"
-dotnet user-secrets set "AzureAd:Audience" "api://life-insurance-crm"
+dotnet user-secrets set "AzureAd:ClientId" "6c970234-fee3-4568-97d8-7d015c903368"
+dotnet user-secrets set "AzureAd:Audience" "api://6c970234-fee3-4568-97d8-7d015c903368"
 ```
+
+
 
 ### User provisioning
 
-JWT **`oid`** (the Entra object ID GUID) must match `OrganizationUsers.UserId` or the API returns 403 (`TenantAccessDenied`). Copy Object ID from Entra admin center → Users, not from `NameIdentifier` / `sub` in a decoded token.
+JWT `oid` (the Entra object ID GUID) must match `OrganizationUsers.UserId` or the API returns 403 (`TenantAccessDenied`). Copy Object ID from Entra admin center → Users, not from `NameIdentifier` / `sub` in a decoded token.
 
 The first SuperAdmin cannot use the app until they exist in SQL. Azure SQL is private-endpoint only — do not leave public access on. Run `scripts/provision-organization-user.ps1 -Role SuperAdmin` (temporarily opens public access for your IP, then closes it). After that, **Organizations** creates CRM tenants and can mark them inactive; **Users** maps Entra users into a chosen tenant as Admin / Agent / ReadOnly. Organization Admins can manage users in their own tenant only. They cannot create tenants or assign SuperAdmin.
 
@@ -149,12 +162,14 @@ Entra directory ID is shared by everyone. CRM `TenantId` is the data-isolation k
 
 Repos today:
 
-| Repository | GitHub |
-|------------|--------|
-| API | [rleeson24/life-insurance-crm-api](https://github.com/rleeson24/life-insurance-crm-api) |
-| Client | [rleeson24/life-insurance-crm-client](https://github.com/rleeson24/life-insurance-crm-client) |
 
-These are **personal** repositories. There is no GitHub organization SSO yet. Enable account 2FA now; when an organization is created, require 2FA for the org and optionally Entra SSO.
+| Repository | GitHub                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| BrokerBook API    | [rleeson24/life-insurance-crm-api](https://github.com/rleeson24/life-insurance-crm-api)       |
+| BrokerBook client | [rleeson24/life-insurance-crm-client](https://github.com/rleeson24/life-insurance-crm-client) |
+
+
+These are **personal** GitHub repositories (Azure resources use the `bbcrm` prefix). There is no GitHub organization SSO yet. Enable account 2FA now; when an organization is created, require 2FA for the org and optionally Entra SSO.
 
 ### Account / org 2FA
 
@@ -162,16 +177,20 @@ These are **personal** repositories. There is no GitHub organization SSO yet. En
 2. When a GitHub **organization** exists: **Organization settings** → **Authentication security** → **Require two-factor authentication** for everyone.
 3. **No shared admin accounts.** Each person uses their own GitHub identity and their own Entra identity. Do not share a PAT, `gh` login, or Azure login.
 
+
+
 ### Branch protection on `main`
 
 Apply to **both** repositories. Direct pushes, force pushes, and deleting `main` are not allowed. Merges go through a pull request whose CI checks are green.
 
 Required status checks (job names from `.github/workflows/ci.yml`):
 
-| Repository | Required checks |
-|------------|-----------------|
-| `life-insurance-crm-api` | `secret-scan`, `vulnerability-scan`, `build-and-test` |
-| `life-insurance-crm-client` | `secret-scan`, `vulnerability-scan`, `build` |
+
+| Repository                  | Required checks                                       |
+| --------------------------- | ----------------------------------------------------- |
+| BrokerBook API    | `secret-scan`, `vulnerability-scan`, `build-and-test` |
+| BrokerBook client | `secret-scan`, `vulnerability-scan`, `build`          |
+
 
 **Portal:** each repo → **Settings** → **Rules** → **Rulesets** → **New branch ruleset**:
 
@@ -226,7 +245,7 @@ $payload = @'
 $payload | gh api --method POST repos/rleeson24/life-insurance-crm-api/rulesets --input -
 ```
 
-Repeat for `life-insurance-crm-client`, replacing the three `context` values with `secret-scan`, `vulnerability-scan`, and `build`.
+Repeat for the BrokerBook client GitHub repository, replacing the three `context` values with `secret-scan`, `vulnerability-scan`, and `build`.
 
 Private personal repositories may need GitHub Pro for rulesets. If the API returns 403, use **Settings** → **Branches** → **Add classic branch protection rule** with the same checks.
 
@@ -246,9 +265,9 @@ Deploy workflows use GitHub Environments `dev` and `prod`. For `prod`:
 - [ ] CA-MFA-ALL on; break-glass excluded and unused
 - [ ] CA-BLOCK-LEGACY on
 - [ ] CA-MFA-AZURE on
-- [ ] `LifeInsuranceCRM-API` and `LifeInsuranceCRM-SPA` are **two** registrations; SPA has no secret
-- [ ] API scope `api://life-insurance-crm/access_as_user` exists; admin consent granted
+- [ ] `BrokerBookCRM-API` and `BrokerBookCRM-SPA` are **two** registrations; SPA has no secret
+- [ ] API scope `api://6c970234-fee3-4568-97d8-7d015c903368/access_as_user` exists; admin consent granted
 - [ ] Key Vault has `AzureAd--TenantId`, `AzureAd--ClientId`, `AzureAd--Audience`
 - [ ] GitHub account 2FA enabled; no shared admins
 - [ ] `main` ruleset active on both repos with the CI jobs required
-- [ ] Test sign-in (after MSAL): token `aud` is `api://life-insurance-crm`, `oid` matches `OrganizationUsers.UserId`
+- [ ] Test sign-in (after MSAL): token `aud` is `api://6c970234-fee3-4568-97d8-7d015c903368`, `oid` matches `OrganizationUsers.UserId`

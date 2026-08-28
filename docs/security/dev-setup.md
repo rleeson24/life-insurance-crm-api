@@ -6,7 +6,7 @@ This repository blocks commits that contain likely secrets (API keys, connection
 
 ### One-time setup
 
-**Windows (recommended):** from the repository root (`life-insurance-crm-api`):
+**Windows (recommended):** from the BrokerBook API repository root:
 
 ```powershell
 .\scripts\setup-pre-commit.ps1
@@ -113,7 +113,7 @@ Daily development does **not** use Azure Key Vault:
 |--------|------------------|
 | Aspire AppHost | `ConnectionStrings:BrokerBook` |
 | `appsettings.Development.json` | Synthetic auth, CORS origin |
-| User secrets (`UserSecretsId` `life-insurance-crm-api-dev`) | Any local overrides |
+| User secrets (API project `UserSecretsId`) | Any local overrides |
 
 ```powershell
 cd src/main
