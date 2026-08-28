@@ -39,7 +39,7 @@ Do not commit vault URIs, connection strings, or `AllowLocalAccess: true`.
 
 ## One-time Azure setup after infra deploy
 
-All LifeInsuranceCRM Azure resources deploy to subscription **`605a6796-5cf0-4a61-80f0-ff2d484360ee`**. `deploy-infra-dev.ps1` selects it automatically.
+All BrokerBook Azure resources deploy to subscription **`605a6796-5cf0-4a61-80f0-ff2d484360ee`**. `deploy-infra-dev.ps1` selects it automatically.
 
 ### 1. Redeploy infra (grants Key Vault Secrets User to the API identity)
 
@@ -47,9 +47,9 @@ All LifeInsuranceCRM Azure resources deploy to subscription **`605a6796-5cf0-4a6
 .\scripts\deploy-infra-dev.ps1
 ```
 
-Note outputs (names are auto-generated on first deploy — copy from output, do not assume `licrm-dev-sql`):
+Note outputs (names are auto-generated on first deploy — copy from output, do not assume `bbcrm-dev-sql`):
 
-- `containerAppName` (e.g. `licrm-dev-api`) — SQL Entra user name
+- `containerAppName` (e.g. `bbcrm-dev-api`) — SQL Entra user name
 - `sqlServerName`, `sqlServerFqdn` — for grant script and connection config
 - `acrName`, `acrLoginServer` — for GitHub deploy workflow
 - `containerAppIdentityPrincipalId` — managed identity object ID
@@ -69,7 +69,7 @@ Set `sqlAzureAdAdministratorObjectId` in your `.bicepparam` to an Entra user or 
 Run as the SQL Entra administrator (the script sets you as Entra admin if none exists, then creates the database user):
 
 ```powershell
-.\scripts\grant-api-sql-access.ps1 -ResourceGroup rg-licrm-dev
+.\scripts\grant-api-sql-access.ps1 -ResourceGroup rg-bbcrm-dev
 ```
 
 If the SQL server is private-endpoint only, the script temporarily enables public access from your IP, runs T-SQL, then turns public access off again.
@@ -83,7 +83,7 @@ The vault uses **RBAC** (`enableRbacAuthorization: true`). Resource group Owner/
 For an existing vault (no full redeploy):
 
 ```powershell
-.\scripts\grant-keyvault-secrets-officer.ps1 -ResourceGroup rg-licrm-dev
+.\scripts\grant-keyvault-secrets-officer.ps1 -ResourceGroup rg-bbcrm-dev
 ```
 
 That assigns Secrets Officer to the signed-in user. Wait one to two minutes, then refresh the portal. Future local deploys (`deploy-infra-dev.ps1`) pass your object ID automatically. To keep the assignment in Bicep, set `keyVaultSecretsOfficerPrincipalId` in `infra/parameters/dev.bicepparam` (`az ad signed-in-user show --query id -o tsv`). That GUID is not a secret.
@@ -96,8 +96,8 @@ After the API app registration exists ([entra-policies.md](entra-policies.md)):
 
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--TenantId" --value "<tenant-id>"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "<api-client-id>"
-az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://life-insurance-crm"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--ClientId" --value "2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
+az keyvault secret set --vault-name <keyVaultName> --name "AzureAd--Audience" --value "api://2c56c052-f9bf-4db0-bead-d2e2e4e7f4c6"
 ```
 
 Optional — App Insights connection string (Bicep already injects the env var; this is a Key Vault backup):
@@ -117,7 +117,7 @@ Redeploy or restart the Container App after adding secrets the API reads at star
 ## Verify
 
 ```powershell
-az containerapp logs show --name licrm-dev-api --resource-group rg-licrm-dev --follow
+az containerapp logs show --name bbcrm-dev-api --resource-group rg-bbcrm-dev --follow
 curl https://<containerAppFqdn>/health
 ```
 
@@ -128,7 +128,7 @@ Readiness should report SQL healthy once the Entra database user exists. Startup
 No Key Vault for daily Aspire work:
 
 - Run via Aspire AppHost (`ConnectionStrings:BrokerBook`).
-- Put non-Azure secrets in user secrets (`dotnet user-secrets`, id `life-insurance-crm-api-dev`).
+- Put non-Azure secrets in user secrets (`dotnet user-secrets` on the BrokerBook API project).
 - Leave `KeyVault:VaultUri` empty. A URI set in Development is ignored unless managed identity is present or `KeyVault:AllowLocalAccess` is true.
 
 ### JIT/PIM exception (rare)

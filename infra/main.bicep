@@ -10,16 +10,16 @@ param environment string
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
 
-@description('Short name prefix for resources, e.g. licrm-dev.')
-param baseName string = 'licrm-${environment}'
+@description('Short name prefix for resources, e.g. bbcrm-dev.')
+param baseName string = 'bbcrm-${environment}'
 
 @description('GitHub organization or user that runs deploy workflows.')
 param githubOwner string
 
-@description('GitHub repository that deploys the API (OIDC federation).')
+@description('GitHub repository that deploys the API (OIDC federation). Must match the GitHub repo name.')
 param githubRepository string
 
-@description('GitHub repository that deploys the SPA (OIDC federation).')
+@description('GitHub repository that deploys the SPA (OIDC federation). Must match the GitHub repo name.')
 param githubClientRepository string = 'life-insurance-crm-client'
 
 @description('Extra browser origins allowed to call the API, in addition to the Static Web App URL.')
@@ -96,14 +96,14 @@ param enableSqlAuditing bool = environment == 'prod'
 @description('Send SQL diagnostics to Log Analytics. Disabled in dev to reduce ingestion cost.')
 param enableSqlDiagnostics bool = environment == 'prod'
 
-@description('Optional override for an existing globally unique ACR name (e.g. licrmdevacr).')
+@description('Optional override for an existing globally unique ACR name (e.g. bbcrmdevacr).')
 param acrNameOverride string = ''
 
-@description('Optional override for an existing globally unique SQL server name (e.g. licrm-dev-sql).')
+@description('Optional override for an existing globally unique SQL server name (e.g. bbcrm-dev-sql).')
 param sqlServerNameOverride string = ''
 
 var tags = {
-  application: 'life-insurance-crm'
+  application: 'brokerbook'
   environment: environment
   managedBy: 'bicep'
 }
@@ -112,14 +112,14 @@ var resourceSuffix = uniqueString(subscription().id, resourceGroup().id)
 
 var acrName = !empty(acrNameOverride)
   ? acrNameOverride
-  : take(replace('licrm${environment}${resourceSuffix}', '-', ''), 50)
+  : take(replace('bbcrm${environment}${resourceSuffix}', '-', ''), 50)
 
 var sqlServerName = !empty(sqlServerNameOverride)
   ? sqlServerNameOverride
-  : take('licrm-${environment}-sql-${resourceSuffix}', 63)
+  : take('bbcrm-${environment}-sql-${resourceSuffix}', 63)
 
 // Key Vault names are globally unique. Use resource group ID (not name) so recreated RGs get a fresh vault name.
-var keyVaultName = take('licrm-${environment}-${resourceSuffix}', 24)
+var keyVaultName = take('bbcrm-${environment}-${resourceSuffix}', 24)
 
 var staticWebAppName = take('${baseName}-swa-${resourceSuffix}', 60)
 

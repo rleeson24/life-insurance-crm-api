@@ -1,7 +1,7 @@
 # Deploy dev infrastructure. Prompts for SQL password and writes a temporary .bicepparam
 # file so special characters are not mangled by PowerShell and az accepts the override.
 param(
-    [string]$ResourceGroup = 'rg-licrm-dev',
+    [string]$ResourceGroup = 'rg-bbcrm-dev',
     [string]$Location = 'centralus',
     [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee'
 )

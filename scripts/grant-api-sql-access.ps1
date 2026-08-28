@@ -2,10 +2,10 @@
 # db_datareader / db_datawriter. Requires an Entra admin on the SQL server
 # (sqlAzureAdAdministratorObjectId in Bicep, or set via this script).
 param(
-    [string]$ResourceGroup = 'rg-licrm-dev',
-    [string]$SqlServer = '',
+    [string]$ResourceGroup = 'rg-bbcrm-dev',
+    [string]$SqlServer = 'bbcrm-dev-sql-27j5ssfa2pgi6',
     [string]$Database = 'BrokerBook',
-    [string]$ContainerAppName = 'licrm-dev-api',
+    [string]$ContainerAppName = 'bbcrm-dev-api',
     [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee',
     [switch]$SkipPublicAccessToggle
 )
