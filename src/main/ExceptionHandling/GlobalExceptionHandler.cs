@@ -1,4 +1,5 @@
 using LifeInsuranceCRM.API.Services;
+using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Utilities;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -27,6 +28,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         var (status, title, detail, errorCode) = exception switch
         {
             CrmException crm => (MapStatus(crm.Status), crm.Message, crm.Message, crm.ErrorCode),
+            BadHttpRequestException bad when bad.StatusCode == StatusCodes.Status413PayloadTooLarge => (
+                StatusCodes.Status413PayloadTooLarge,
+                "Payload too large",
+                "The import file is larger than 20 MB",
+                ImportErrorCodes.PayloadTooLarge),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred.",

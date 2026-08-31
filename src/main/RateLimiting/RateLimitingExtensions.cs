@@ -97,6 +97,23 @@ public static class RateLimitingExtensions
                     });
             });
 
+            rateLimiterOptions.AddPolicy(RateLimitingPolicyNames.SecuritySensitive, httpContext =>
+            {
+                var userId = httpContext.User.FindFirstValue("oid")
+                    ?? httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                    ?? "anonymous";
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    $"sensitive:{userId}",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = options.SecuritySensitiveRequestsPerMinute,
+                        Window = TimeSpan.FromMinutes(1),
+                        AutoReplenishment = true,
+                    });
+            });
+
             rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
                 if (IsHealthPath(httpContext.Request.Path))

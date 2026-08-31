@@ -61,6 +61,10 @@ void AddConfigurationOptions(WebApplicationBuilder webBuilder)
 
 void AddWebApi(WebApplicationBuilder webBuilder)
 {
+    webBuilder.WebHost.ConfigureKestrel(kestrel =>
+    {
+        kestrel.Limits.MaxRequestBodySize = AccessImportLimits.MaxRequestBodyBytes;
+    });
     webBuilder.Services.AddHttpContextAccessor();
     webBuilder.Services.AddScoped<IActorTracker, ActorTracker>();
     webBuilder.Services.AddSingleton<IProblemDetailsFactory, ProblemDetailsFactory>();

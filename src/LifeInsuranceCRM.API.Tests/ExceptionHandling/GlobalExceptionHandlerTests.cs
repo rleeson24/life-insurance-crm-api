@@ -28,6 +28,21 @@ public class GlobalExceptionHandlerTests
         Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
     }
 
+    [Fact]
+    public async Task TryHandleAsync_PayloadTooLarge_Returns413()
+    {
+        var logger = new RecordingLogger<GlobalExceptionHandler>();
+        var handler = new GlobalExceptionHandler(new ProblemDetailsFactory(), logger);
+        var context = new DefaultHttpContext { Response = { Body = new MemoryStream() } };
+
+        await handler.TryHandleAsync(
+            context,
+            new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge),
+            CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, context.Response.StatusCode);
+    }
+
     private sealed class RecordingLogger<T> : ILogger<T>
     {
         public List<(LogLevel Level, Exception? Exception, string Message)> Entries { get; } = [];
