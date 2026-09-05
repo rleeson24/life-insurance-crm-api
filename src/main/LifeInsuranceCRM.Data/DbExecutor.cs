@@ -85,10 +85,22 @@ public sealed class DbExecutor : IDbExecutor
         command.CommandText = sql;
         if (parameters.Length > 0)
         {
-            command.Parameters.AddRange(
-                parameters.Select(static p => new SqlParameter(p.ParameterName, p.Value)).ToArray());
+            command.Parameters.AddRange(Array.ConvertAll(parameters, CloneParameter));
         }
 
         return command;
     }
+
+    private static SqlParameter CloneParameter(SqlParameter source) =>
+        new()
+        {
+            ParameterName = source.ParameterName,
+            SqlDbType = source.SqlDbType,
+            Size = source.Size,
+            Precision = source.Precision,
+            Scale = source.Scale,
+            Direction = source.Direction,
+            IsNullable = source.IsNullable,
+            Value = source.Value,
+        };
 }

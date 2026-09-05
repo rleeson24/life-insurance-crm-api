@@ -10,6 +10,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Data;
+using LifeInsuranceCRM.Providers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,7 @@ AddCors(builder);
 AddAuthentication(builder);
 AddRateLimitingPolicies(builder);
 builder.Services.AddDataServices();
+builder.Services.AddFieldEncryption();
 builder.Services.AddCoreServices();
 builder.Services.AddScoped<IDevelopmentDatabaseInitializer, DevelopmentDatabaseInitializer>();
 
@@ -56,6 +58,7 @@ void AddConfigurationOptions(WebApplicationBuilder webBuilder)
     webBuilder.Services.Configure<CorsOptions>(webBuilder.Configuration.GetSection(CorsOptions.SectionName));
     webBuilder.Services.Configure<RateLimitingOptions>(webBuilder.Configuration.GetSection(RateLimitingOptions.SectionName));
     webBuilder.Services.Configure<KeyVaultOptions>(webBuilder.Configuration.GetSection(KeyVaultOptions.SectionName));
+    webBuilder.Services.Configure<FieldEncryptionOptions>(webBuilder.Configuration.GetSection(FieldEncryptionOptions.SectionName));
     webBuilder.Services.ConfigureDatabaseOptions(webBuilder.Configuration);
 }
 

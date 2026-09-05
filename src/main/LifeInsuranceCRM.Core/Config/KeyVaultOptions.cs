@@ -33,5 +33,8 @@ public sealed class KeyVaultOptions
         public const string AzureAdTenantId = "AzureAd--TenantId";
         public const string AzureAdClientId = "AzureAd--ClientId";
         public const string AzureAdAudience = "AzureAd--Audience";
+        public const string FieldEncryptionKey = "FieldEncryption--Key";
+        public const string FieldEncryptionWrappedDek = "FieldEncryption--WrappedDek";
+        public const string FieldEncryptionBlindIndexKey = "FieldEncryption--BlindIndexKey";
     }
 }
