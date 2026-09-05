@@ -88,5 +88,21 @@ resource secretsOfficerAssignment 'Microsoft.Authorization/roleAssignments@2022-
   }
 }
 
+resource fieldEncryptionKey 'Microsoft.KeyVault/vaults/keys@2023-07-01' = {
+  parent: keyVault
+  name: 'field-encryption'
+  properties: {
+    kty: 'RSA'
+    keySize: 2048
+    keyOps: [
+      'wrapKey'
+      'unwrapKey'
+    ]
+    attributes: {
+      enabled: true
+    }
+  }
+}
+
 output keyVaultId string = keyVault.id
 output keyVaultUri string = keyVault.properties.vaultUri

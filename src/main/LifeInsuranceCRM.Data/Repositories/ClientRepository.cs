@@ -1,10 +1,13 @@
+using System.Data;
 using System.Diagnostics;
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Security;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Security;
 using LifeInsuranceCRM.Utilities;
 using Microsoft.Data.SqlClient;
 
@@ -21,10 +24,12 @@ public sealed class ClientRepository : IClientRepository
         """;
 
     private readonly IDbExecutor _dbExecutor;
+    private readonly IFieldEncryptionService _fieldEncryption;
 
-    public ClientRepository(IDbExecutor dbExecutor)
+    public ClientRepository(IDbExecutor dbExecutor, IFieldEncryptionService fieldEncryption)
     {
         _dbExecutor = dbExecutor;
+        _fieldEncryption = fieldEncryption;
     }
 
     public async Task<ListClientsResult> ListAsync(ListClientsRequest request, CancellationToken cancellationToken = default)
@@ -32,9 +37,22 @@ public sealed class ClientRepository : IClientRepository
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
         var offset = (page - 1) * pageSize;
-        var searchPattern = string.IsNullOrWhiteSpace(request.Search)
-            ? null
-            : $"%{request.Search.Trim()}%";
+        string? searchPattern = null;
+        byte[]? medicareBlindIndex = null;
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var trimmedSearch = request.Search.Trim();
+            searchPattern = $"%{trimmedSearch}%";
+            if (MedicareNumberNormalizer.IsLookupCandidate(trimmedSearch))
+            {
+                medicareBlindIndex = _fieldEncryption.ComputeMedicareNumberBlindIndex(trimmedSearch);
+            }
+        }
+
+        if (medicareBlindIndex is not null)
+        {
+            MarkCurrentSpanContainsPhiSql();
+        }
 
         const string countSql = """
             SELECT COUNT(*)
@@ -42,7 +60,8 @@ public sealed class ClientRepository : IClientRepository
             WHERE c.IsDeleted = 0
               AND (@Search IS NULL OR c.FirstName LIKE @Search OR c.LastName LIKE @Search
                    OR c.LegalName LIKE @Search OR c.PrimaryPhone LIKE @Search
-                   OR c.EmailAddress LIKE @Search OR c.MedicareNumber LIKE @Search)
+                   OR c.EmailAddress LIKE @Search
+                   OR (@MedicareBlindIndex IS NOT NULL AND c.MedicareNumberBlindIndex = @MedicareBlindIndex))
               AND (@IsActive IS NULL OR c.IsActive = @IsActive)
               AND (@IsAcaClient IS NULL OR c.IsAcaClient = @IsAcaClient);
             """;
@@ -61,7 +80,8 @@ public sealed class ClientRepository : IClientRepository
             WHERE c.IsDeleted = 0
               AND (@Search IS NULL OR c.FirstName LIKE @Search OR c.LastName LIKE @Search
                    OR c.LegalName LIKE @Search OR c.PrimaryPhone LIKE @Search
-                   OR c.EmailAddress LIKE @Search OR c.MedicareNumber LIKE @Search)
+                   OR c.EmailAddress LIKE @Search
+                   OR (@MedicareBlindIndex IS NOT NULL AND c.MedicareNumberBlindIndex = @MedicareBlindIndex))
               AND (@IsActive IS NULL OR c.IsActive = @IsActive)
               AND (@IsAcaClient IS NULL OR c.IsAcaClient = @IsAcaClient)
             ORDER BY c.UpdatedAt DESC
@@ -71,6 +91,7 @@ public sealed class ClientRepository : IClientRepository
         var parameters = new[]
         {
             new SqlParameter("@Search", (object?)searchPattern ?? DBNull.Value),
+            VarBinary("@MedicareBlindIndex", medicareBlindIndex),
             new SqlParameter("@IsActive", (object?)request.IsActive ?? DBNull.Value),
             new SqlParameter("@IsAcaClient", (object?)request.IsAcaClient ?? DBNull.Value),
         };
@@ -154,13 +175,13 @@ public sealed class ClientRepository : IClientRepository
             INSERT INTO dbo.Clients (
                 ClientId, TenantId, FirstName, LastName, LegalName, HouseholdName, PrimaryPhone,
                 AddressLine1, AddressLine2, City, State, PostalCode, EmailAddress, DateOfBirth,
-                MedicareNumber, MedicarePartAEffectiveDate, MedicarePartBEffectiveDate,
+                MedicareNumber, MedicareNumberBlindIndex, MedicarePartAEffectiveDate, MedicarePartBEffectiveDate,
                 IsActive, IsAcaClient, HasContactConsent, Notes,
                 CreatedAt, CreatedByUserId, UpdatedAt, UpdatedByUserId, IsDeleted)
             VALUES (
                 @ClientId, @TenantId, @FirstName, @LastName, @LegalName, @HouseholdName, @PrimaryPhone,
                 @AddressLine1, @AddressLine2, @City, @State, @PostalCode, @EmailAddress, @DateOfBirth,
-                @MedicareNumber, @MedicarePartAEffectiveDate, @MedicarePartBEffectiveDate,
+                @MedicareNumber, @MedicareNumberBlindIndex, @MedicarePartAEffectiveDate, @MedicarePartBEffectiveDate,
                 @IsActive, @IsAcaClient, @HasContactConsent, @Notes,
                 @CreatedAt, @CreatedByUserId, @UpdatedAt, @UpdatedByUserId, 0);
             """;
@@ -191,6 +212,7 @@ public sealed class ClientRepository : IClientRepository
                 City = @City, State = @State, PostalCode = @PostalCode,
                 EmailAddress = @EmailAddress, DateOfBirth = @DateOfBirth,
                 MedicareNumber = @MedicareNumber,
+                MedicareNumberBlindIndex = @MedicareNumberBlindIndex,
                 MedicarePartAEffectiveDate = @MedicarePartAEffectiveDate,
                 MedicarePartBEffectiveDate = @MedicarePartBEffectiveDate,
                 IsActive = @IsActive, IsAcaClient = @IsAcaClient, HasContactConsent = @HasContactConsent,
@@ -265,7 +287,7 @@ public sealed class ClientRepository : IClientRepository
         return rows > 0;
     }
 
-    private static Client ReadClient(SqlDataReader reader) => new()
+    private Client ReadClient(SqlDataReader reader) => new()
     {
         ClientId = reader.GetGuid("ClientId"),
         TenantId = reader.GetGuid("TenantId"),
@@ -280,10 +302,10 @@ public sealed class ClientRepository : IClientRepository
         State = reader.GetNullableString("State"),
         PostalCode = reader.GetNullableString("PostalCode"),
         EmailAddress = reader.GetNullableString("EmailAddress"),
-        DateOfBirth = reader.GetNullableDateOnly("DateOfBirth"),
-        MedicareNumber = reader.GetNullableString("MedicareNumber"),
-        MedicarePartAEffectiveDate = reader.GetNullableDateOnly("MedicarePartAEffectiveDate"),
-        MedicarePartBEffectiveDate = reader.GetNullableDateOnly("MedicarePartBEffectiveDate"),
+        DateOfBirth = _fieldEncryption.DecryptDateOnly(reader.GetNullableBytes("DateOfBirth")),
+        MedicareNumber = _fieldEncryption.Decrypt(reader.GetNullableBytes("MedicareNumber")),
+        MedicarePartAEffectiveDate = _fieldEncryption.DecryptDateOnly(reader.GetNullableBytes("MedicarePartAEffectiveDate")),
+        MedicarePartBEffectiveDate = _fieldEncryption.DecryptDateOnly(reader.GetNullableBytes("MedicarePartBEffectiveDate")),
         IsActive = reader.GetBoolean("IsActive"),
         IsAcaClient = reader.GetBoolean("IsAcaClient"),
         HasContactConsent = reader.GetBoolean("HasContactConsent"),
@@ -294,7 +316,7 @@ public sealed class ClientRepository : IClientRepository
         UpdatedByUserId = reader.GetGuid("UpdatedByUserId"),
     };
 
-    private static SqlParameter[] BuildClientParameters(
+    private SqlParameter[] BuildClientParameters(
         Guid clientId,
         Guid? tenantId,
         string? firstName,
@@ -332,10 +354,11 @@ public sealed class ClientRepository : IClientRepository
             new("@State", (object?)state ?? DBNull.Value),
             new("@PostalCode", (object?)postalCode ?? DBNull.Value),
             new("@EmailAddress", (object?)emailAddress ?? DBNull.Value),
-            new("@DateOfBirth", dateOfBirth.HasValue ? dateOfBirth.Value : DBNull.Value),
-            new("@MedicareNumber", (object?)medicareNumber ?? DBNull.Value),
-            new("@MedicarePartAEffectiveDate", medicarePartAEffectiveDate.HasValue ? medicarePartAEffectiveDate.Value : DBNull.Value),
-            new("@MedicarePartBEffectiveDate", medicarePartBEffectiveDate.HasValue ? medicarePartBEffectiveDate.Value : DBNull.Value),
+            VarBinary("@DateOfBirth", _fieldEncryption.EncryptDateOnly(dateOfBirth)),
+            VarBinary("@MedicareNumber", _fieldEncryption.Encrypt(medicareNumber)),
+            VarBinary("@MedicareNumberBlindIndex", _fieldEncryption.ComputeMedicareNumberBlindIndex(medicareNumber)),
+            VarBinary("@MedicarePartAEffectiveDate", _fieldEncryption.EncryptDateOnly(medicarePartAEffectiveDate)),
+            VarBinary("@MedicarePartBEffectiveDate", _fieldEncryption.EncryptDateOnly(medicarePartBEffectiveDate)),
             new("@IsActive", isActive),
             new("@IsAcaClient", isAcaClient),
             new("@HasContactConsent", hasContactConsent),
@@ -353,6 +376,9 @@ public sealed class ClientRepository : IClientRepository
 
         return parameters.ToArray();
     }
+
+    private static SqlParameter VarBinary(string name, byte[]? value) =>
+        new(name, SqlDbType.VarBinary, -1) { Value = (object?)value ?? DBNull.Value };
 
     private static void MarkCurrentSpanContainsPhiSql() =>
         Activity.Current?.SetTag(TelemetryConstants.ContainsPhiSqlTag, true);

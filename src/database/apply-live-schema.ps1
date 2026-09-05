@@ -1,4 +1,4 @@
-# Applies live/*.sql in the same order as Aspire LiveSchemaScripts (001–011).
+# Applies live/*.sql in the same order as Aspire LiveSchemaScripts (001–012).
 # Scripts are idempotent; re-running is safe.
 #
 # Azure SQL (private endpoint): Entra token, brief public access for your IP, then close.
@@ -14,9 +14,13 @@
 #
 #   .\apply-live-schema.ps1 -Server "localhost,1433" -UseIntegratedSecurity -IncludeSeed
 #
-# Explicit connection string:
+# Aspire (copy connection string from the BrokerBook database resource, not the sql server):
 #
-#   .\apply-live-schema.ps1 -ConnectionString "Server=localhost,1433;Database=BrokerBook;..." -IncludeSeed
+#   .\apply-live-schema.ps1 -ConnectionString "<BrokerBook connection string from dashboard>"
+#
+# Verify schema without applying scripts:
+#
+#   .\apply-live-schema.ps1 -ConnectionString "..." -VerifyOnly
 param(
     [string]$ResourceGroup = 'rg-bbcrm-dev',
     [string]$SqlServer = '',
@@ -26,7 +30,8 @@ param(
     [string]$Server = '',
     [switch]$UseIntegratedSecurity,
     [switch]$IncludeSeed,
-    [switch]$SkipPublicAccessToggle
+    [switch]$SkipPublicAccessToggle,
+    [switch]$VerifyOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,7 +48,8 @@ $scriptFiles = @(
     '008_AuthSecurityEvents.sql',
     '009_RLS.sql',
     '010_OrganizationUserRoles.sql',
-    '011_PlanNameLists.sql'
+    '011_PlanNameLists.sql',
+    '012_ClientFieldEncryption.sql'
 )
 
 if ($IncludeSeed) {
@@ -80,6 +86,90 @@ function Split-SqlBatches([string]$sql) {
     return $batches
 }
 
+function Resolve-LiveSchemaConnectionString([string]$RawConnectionString) {
+    $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $RawConnectionString
+    $catalog = [string]$builder['Initial Catalog']
+    if ([string]::IsNullOrWhiteSpace($catalog) -or $catalog -eq 'master') {
+        Write-Warning "Connection string targeted '$catalog'. Live schema applies to '$Database' (the Aspire API database). Overriding Initial Catalog."
+        $builder['Initial Catalog'] = $Database
+    }
+
+    if (-not $builder.ContainsKey('TrustServerCertificate') -or -not $builder['TrustServerCertificate']) {
+        $builder['TrustServerCertificate'] = $true
+    }
+
+    return [string]$builder.ConnectionString
+}
+
+function Test-LiveSchema {
+    param(
+        [Parameter(Mandatory)][System.Data.SqlClient.SqlConnection]$Connection
+    )
+
+    $Connection.Open()
+    try {
+        $command = $Connection.CreateCommand()
+        $command.CommandText = @"
+SELECT c.name, TYPE_NAME(c.system_type_id) AS SqlType, c.max_length
+FROM sys.columns c
+WHERE c.object_id = OBJECT_ID(N'dbo.Clients')
+  AND c.name IN (
+      N'DateOfBirth',
+      N'MedicareNumber',
+      N'MedicareNumberBlindIndex',
+      N'MedicarePartAEffectiveDate',
+      N'MedicarePartBEffectiveDate')
+ORDER BY c.name;
+"@
+        $reader = $command.ExecuteReader()
+        $columns = @{}
+        while ($reader.Read()) {
+            $columns[[string]$reader['name']] = [string]$reader['SqlType']
+        }
+        $reader.Close()
+
+        $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $Connection.ConnectionString
+        $catalog = [string]$builder['Initial Catalog']
+        Write-Host "Schema check on database '$catalog':"
+
+        $expected = [ordered]@{
+            DateOfBirth = 'varbinary'
+            MedicareNumber = 'varbinary'
+            MedicareNumberBlindIndex = 'varbinary'
+            MedicarePartAEffectiveDate = 'varbinary'
+            MedicarePartBEffectiveDate = 'varbinary'
+        }
+
+        $missing = @()
+        $wrongType = @()
+        foreach ($entry in $expected.GetEnumerator()) {
+            if (-not $columns.ContainsKey($entry.Key)) {
+                $missing += $entry.Key
+                Write-Host "  MISSING  $($entry.Key)"
+                continue
+            }
+
+            $actual = $columns[$entry.Key]
+            if ($actual -ne $entry.Value) {
+                $wrongType += "$($entry.Key) ($actual)"
+                Write-Host "  WRONG    $($entry.Key) is $actual (expected $($entry.Value))"
+            }
+            else {
+                Write-Host "  OK       $($entry.Key) ($actual)"
+            }
+        }
+
+        if ($missing.Count -gt 0 -or $wrongType.Count -gt 0) {
+            throw "Live schema is behind on '$catalog'. Missing: $($missing -join ', '). Wrong type: $($wrongType -join ', '). Re-run apply-live-schema.ps1 against the BrokerBook database connection string from the Aspire dashboard."
+        }
+
+        Write-Host "Live schema verification passed."
+    }
+    finally {
+        $Connection.Close()
+    }
+}
+
 function Invoke-LiveSchema {
     param(
         [Parameter(Mandatory)][System.Data.SqlClient.SqlConnection]$Connection
@@ -103,12 +193,22 @@ function Invoke-LiveSchema {
         $Connection.Close()
     }
 
-    Write-Host "Done. Applied $($scriptFiles.Count) script(s) to $Database."
+    $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $Connection.ConnectionString
+    $resolvedCatalog = [string]$builder['Initial Catalog']
+    Write-Host "Done. Applied $($scriptFiles.Count) script(s) to '$resolvedCatalog'."
+    Test-LiveSchema -Connection $Connection
 }
 
 if (-not [string]::IsNullOrWhiteSpace($ConnectionString)) {
-    Write-Host "Applying live schema via connection string to $Database..."
-    $connection = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+    $resolvedConnectionString = Resolve-LiveSchemaConnectionString $ConnectionString
+    $resolvedCatalog = [string](New-Object System.Data.SqlClient.SqlConnectionStringBuilder $resolvedConnectionString)['Initial Catalog']
+    $connection = New-Object System.Data.SqlClient.SqlConnection $resolvedConnectionString
+    if ($VerifyOnly) {
+        Test-LiveSchema -Connection $connection
+        return
+    }
+
+    Write-Host "Applying live schema to '$resolvedCatalog'..."
     Invoke-LiveSchema -Connection $connection
     return
 }

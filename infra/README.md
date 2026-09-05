@@ -195,7 +195,7 @@ After deploying infra:
 2. Run [`scripts/grant-keyvault-secrets-officer.ps1`](../scripts/grant-keyvault-secrets-officer.ps1) so you can set vault secrets (RG Owner is not enough). Then create Entra app registrations and store `AzureAd--*` secrets. See [`docs/security/entra-policies.md`](../docs/security/entra-policies.md) and [`docs/security/azure-runtime-auth.md`](../docs/security/azure-runtime-auth.md).
 3. Deploy the API image via GitHub Actions.
 
-Infra grants the API managed identity **Key Vault Secrets User** (read) and **AcrPull**. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
+Infra grants the API managed identity **Key Vault Secrets User** (read), **Key Vault Crypto User** (unwrap the field-encryption DEK), and **AcrPull**. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
 
 Remaining follow-ups:
 

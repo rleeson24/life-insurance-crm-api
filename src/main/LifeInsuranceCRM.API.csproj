@@ -30,6 +30,7 @@
     <ProjectReference Include="..\orchestration\LifeInsuranceCRM.ServiceDefaults\LifeInsuranceCRM.ServiceDefaults.csproj" />
     <ProjectReference Include="LifeInsuranceCRM.Core\LifeInsuranceCRM.Core.csproj" />
     <ProjectReference Include="LifeInsuranceCRM.Data\LifeInsuranceCRM.Data.csproj" />
+    <ProjectReference Include="LifeInsuranceCRM.Providers\LifeInsuranceCRM.Providers.csproj" />
   </ItemGroup>
 
 </Project>

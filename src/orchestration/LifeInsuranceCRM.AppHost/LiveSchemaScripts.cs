@@ -19,6 +19,7 @@ internal static class LiveSchemaScripts
         "009_RLS.sql",
         "010_OrganizationUserRoles.sql",
         "011_PlanNameLists.sql",
+        "012_ClientFieldEncryption.sql",
         "seed/001_DevelopmentTenant.sql",
     ];
 

@@ -199,6 +199,9 @@ public class KeyVaultOptionsTests
         Assert.Equal("AzureAd--TenantId", KeyVaultOptions.SecretNames.AzureAdTenantId);
         Assert.Equal("AzureAd--ClientId", KeyVaultOptions.SecretNames.AzureAdClientId);
         Assert.Equal("AzureAd--Audience", KeyVaultOptions.SecretNames.AzureAdAudience);
+        Assert.Equal("FieldEncryption--Key", KeyVaultOptions.SecretNames.FieldEncryptionKey);
+        Assert.Equal("FieldEncryption--WrappedDek", KeyVaultOptions.SecretNames.FieldEncryptionWrappedDek);
+        Assert.Equal("FieldEncryption--BlindIndexKey", KeyVaultOptions.SecretNames.FieldEncryptionBlindIndexKey);
     }
 
     [Fact]
