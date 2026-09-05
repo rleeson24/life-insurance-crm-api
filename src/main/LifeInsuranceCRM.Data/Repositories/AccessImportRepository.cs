@@ -1,6 +1,8 @@
+using System.Data;
 using System.Diagnostics;
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Security;
 using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models;
@@ -15,11 +17,16 @@ public sealed class AccessImportRepository : IAccessImportRepository
 {
     private readonly DatabaseOptions _options;
     private readonly IActorTracker _actorTracker;
+    private readonly IFieldEncryptionService _fieldEncryption;
 
-    public AccessImportRepository(IOptions<DatabaseOptions> options, IActorTracker actorTracker)
+    public AccessImportRepository(
+        IOptions<DatabaseOptions> options,
+        IActorTracker actorTracker,
+        IFieldEncryptionService fieldEncryption)
     {
         _options = options.Value;
         _actorTracker = actorTracker;
+        _fieldEncryption = fieldEncryption;
     }
 
     public async Task<AccessImportPersistResult> ImportAsync(
@@ -78,13 +85,13 @@ public sealed class AccessImportRepository : IAccessImportRepository
                     INSERT INTO dbo.Clients (
                         ClientId, TenantId, FirstName, LastName, LegalName, HouseholdName, PrimaryPhone,
                         AddressLine1, AddressLine2, City, State, PostalCode, EmailAddress, DateOfBirth,
-                        MedicareNumber, MedicarePartAEffectiveDate, MedicarePartBEffectiveDate,
+                        MedicareNumber, MedicareNumberBlindIndex, MedicarePartAEffectiveDate, MedicarePartBEffectiveDate,
                         IsActive, IsAcaClient, HasContactConsent, Notes,
                         CreatedAt, CreatedByUserId, UpdatedAt, UpdatedByUserId, IsDeleted)
                     VALUES (
                         @ClientId, @TenantId, @FirstName, @LastName, @LegalName, @HouseholdName, @PrimaryPhone,
                         @AddressLine1, @AddressLine2, @City, @State, @PostalCode, @EmailAddress, @DateOfBirth,
-                        @MedicareNumber, @MedicarePartAEffectiveDate, @MedicarePartBEffectiveDate,
+                        @MedicareNumber, @MedicareNumberBlindIndex, @MedicarePartAEffectiveDate, @MedicarePartBEffectiveDate,
                         @IsActive, @IsAcaClient, @HasContactConsent, @Notes,
                         @CreatedAt, @CreatedByUserId, @UpdatedAt, @UpdatedByUserId, 0);
                     """,
@@ -102,10 +109,11 @@ public sealed class AccessImportRepository : IAccessImportRepository
                     Param("@State", client.State),
                     Param("@PostalCode", client.PostalCode),
                     Param("@EmailAddress", client.EmailAddress),
-                    DateParam("@DateOfBirth", client.DateOfBirth),
-                    Param("@MedicareNumber", client.MedicareNumber),
-                    DateParam("@MedicarePartAEffectiveDate", client.MedicarePartAEffectiveDate),
-                    DateParam("@MedicarePartBEffectiveDate", client.MedicarePartBEffectiveDate),
+                    VarBinary("@DateOfBirth", _fieldEncryption.EncryptDateOnly(client.DateOfBirth)),
+                    VarBinary("@MedicareNumber", _fieldEncryption.Encrypt(client.MedicareNumber)),
+                    VarBinary("@MedicareNumberBlindIndex", _fieldEncryption.ComputeMedicareNumberBlindIndex(client.MedicareNumber)),
+                    VarBinary("@MedicarePartAEffectiveDate", _fieldEncryption.EncryptDateOnly(client.MedicarePartAEffectiveDate)),
+                    VarBinary("@MedicarePartBEffectiveDate", _fieldEncryption.EncryptDateOnly(client.MedicarePartBEffectiveDate)),
                     Param("@IsActive", client.IsActive),
                     Param("@IsAcaClient", client.IsAcaClient),
                     Param("@HasContactConsent", client.HasContactConsent),
@@ -409,6 +417,9 @@ public sealed class AccessImportRepository : IAccessImportRepository
 
     private static SqlParameter DateParam(string name, DateOnly? value) =>
         new(name, value.HasValue ? value.Value : DBNull.Value);
+
+    private static SqlParameter VarBinary(string name, byte[]? value) =>
+        new(name, SqlDbType.VarBinary, -1) { Value = (object?)value ?? DBNull.Value };
 
     private static void MarkCurrentSpanContainsPhiSql() =>
         Activity.Current?.SetTag(TelemetryConstants.ContainsPhiSqlTag, true);

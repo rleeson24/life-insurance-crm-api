@@ -144,6 +144,10 @@ public static class Extensions
 
         return !string.IsNullOrEmpty(text)
             && (text.Contains("MedicareNumber", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("DateOfBirth", StringComparison.OrdinalIgnoreCase));
+                || text.Contains("MedicareNumberBlindIndex", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("MedicareBlindIndex", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("DateOfBirth", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("MedicarePartAEffectiveDate", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("MedicarePartBEffectiveDate", StringComparison.OrdinalIgnoreCase));
     }
 }

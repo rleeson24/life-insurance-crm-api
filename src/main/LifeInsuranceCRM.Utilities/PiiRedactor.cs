@@ -14,9 +14,9 @@ public static class PiiRedactor
         """
         (?ix)
         (?<prefix>
-            @?(MedicareNumber|DateOfBirth)
+            @?(MedicareNumber|MedicareNumberBlindIndex|DateOfBirth|MedicarePartAEffectiveDate|MedicarePartBEffectiveDate)
             |
-            ["'\[](?:MedicareNumber|DateOfBirth)["'\]]
+            ["'\[](?:MedicareNumber|MedicareNumberBlindIndex|DateOfBirth|MedicarePartAEffectiveDate|MedicarePartBEffectiveDate)["'\]]
         )
         \s*(?<sep>[:=])\s*
         (?<value>
@@ -45,7 +45,11 @@ public static class PiiRedactor
 
         var name = key.AsSpan().TrimStart('@');
         return name.Equals("MedicareNumber", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("MedicareNumberBlindIndex", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("MedicareBlindIndex", StringComparison.OrdinalIgnoreCase)
             || name.Equals("DateOfBirth", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("MedicarePartAEffectiveDate", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("MedicarePartBEffectiveDate", StringComparison.OrdinalIgnoreCase)
             || name.Equals("db.query.text", StringComparison.OrdinalIgnoreCase)
             || name.Equals("db.statement", StringComparison.OrdinalIgnoreCase)
             || name.StartsWith("db.query.parameter", StringComparison.OrdinalIgnoreCase);

@@ -32,8 +32,20 @@ Key Vault secret names use `--` for hierarchy, e.g. `AzureAd--ClientId` → `Azu
 | `AzureAd--Audience` | `AzureAd:Audience` | Always in Azure |
 | `Database--ConnectionString` | `Database:ConnectionString` | Only if not using managed-identity SQL (1.4 is MI-only in prod) |
 | `ApplicationInsights--ConnectionString` | `ApplicationInsights:ConnectionString` | Optional; Container Apps also inject `APPLICATIONINSIGHTS_CONNECTION_STRING` |
+| `FieldEncryption--Key` | `FieldEncryption:Key` | Azure: 32-byte AES DEK as base64. Local Development uses a built-in non-prod DEK if this is empty. |
+| `FieldEncryption--WrappedDek` | `FieldEncryption:WrappedDek` | Optional. RSA-OAEP-256 wrap of the same 32-byte DEK using the vault key `field-encryption`. Preferred over a raw DEK secret. |
+| `FieldEncryption--BlindIndexKey` | `FieldEncryption:BlindIndexKey` | Azure: 32-byte HMAC key as base64 for Medicare number blind indexes. Must be distinct from the DEK. Local Development uses a built-in non-prod key if empty. |
 
-Field-level encryption (phase 2.1) uses the Key Vault **key** named by `KeyVault:FieldEncryptionKeyName` (default `field-encryption`). That is a cryptographic key, not a secret; create it in the vault before enabling envelope encryption.
+Field-level encryption (phase 2.1) encrypts `MedicareNumber`, `DateOfBirth`, `MedicarePartAEffectiveDate`, and `MedicarePartBEffectiveDate` in the API before SQL writes. Those columns are `varbinary(max)` (`012_ClientFieldEncryption.sql`). Name, phone, and email stay searchable plaintext.
+
+Medicare number **search** uses a keyed HMAC blind index in `MedicareNumberBlindIndex` (same script). The API normalizes the query (uppercase, strip dashes) and looks up the 32-byte hash. The index is not reversible to the MBI.
+
+- **Key Vault RSA key** named by `KeyVault:FieldEncryptionKeyName` (default `field-encryption`) wraps the DEK. Bicep creates this key; the API identity needs **Key Vault Crypto User** to unwrap.
+- **Raw DEK secret** `FieldEncryption--Key` is the simpler Azure bootstrap: a 32-byte key, base64-encoded. The API never logs this value.
+- **Blind index key** `FieldEncryption--BlindIndexKey` is a separate 32-byte HMAC key. Re-saving clients backfills `MedicareNumberBlindIndex` on existing databases.
+- **Local Aspire:** if `FieldEncryption:Key` is unset, the API derives a stable Development-only DEK. Do not use that material in Azure.
+
+Apply `012_ClientFieldEncryption.sql` to existing databases before deploying the API that writes ciphertext and blind indexes. Existing plaintext in encrypted columns is discarded (T-SQL cannot encrypt without the DEK). Re-enter DOB, MBI, and Part A/B dates in the UI if needed.
 
 Do not commit vault URIs, connection strings, or `AllowLocalAccess: true`.
 

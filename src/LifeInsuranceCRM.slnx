@@ -3,6 +3,7 @@
     <Project Path="main/LifeInsuranceCRM.API.csproj" />
     <Project Path="main/LifeInsuranceCRM.Core/LifeInsuranceCRM.Core.csproj" />
     <Project Path="main/LifeInsuranceCRM.Data/LifeInsuranceCRM.Data.csproj" />
+    <Project Path="main/LifeInsuranceCRM.Providers/LifeInsuranceCRM.Providers.csproj" />
     <Project Path="main/LifeInsuranceCRM.Utilities/LifeInsuranceCRM.Utilities.csproj" />
   </Folder>
   <Folder Name="/tests/">
