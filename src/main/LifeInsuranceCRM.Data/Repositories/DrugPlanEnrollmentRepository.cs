@@ -84,6 +84,15 @@ public sealed class DrugPlanEnrollmentRepository : IDrugPlanEnrollmentRepository
     {
         var drugPlanEnrollmentId = Guid.NewGuid();
         const string sql = """
+            SET XACT_ABORT ON;
+            BEGIN TRANSACTION;
+
+            UPDATE dbo.DrugPlanEnrollments SET
+                IsActivePlan = 0,
+                UpdatedAt = @UpdatedAt,
+                UpdatedByUserId = @UpdatedByUserId
+            WHERE ClientId = @ClientId AND IsDeleted = 0 AND IsActivePlan = 1;
+
             INSERT INTO dbo.DrugPlanEnrollments (
                 DrugPlanEnrollmentId, TenantId, ClientId, RecordedAt, IsActivePlan, PlanName,
                 CoverageStartDate, IsNewEnrollment, HealthReimbursementArrangement,
@@ -94,6 +103,8 @@ public sealed class DrugPlanEnrollmentRepository : IDrugPlanEnrollmentRepository
                 @CoverageStartDate, @IsNewEnrollment, @HealthReimbursementArrangement,
                 @EnrollmentPlatform, @EnrollmentLocation, @Notes,
                 @CreatedAt, @CreatedByUserId, @UpdatedAt, @UpdatedByUserId, 0);
+
+            COMMIT TRANSACTION;
             """;
 
         await _dbExecutor.ExecuteNonQueryAsync(
@@ -103,7 +114,7 @@ public sealed class DrugPlanEnrollmentRepository : IDrugPlanEnrollmentRepository
             new SqlParameter("@TenantId", tenantId),
             new SqlParameter("@ClientId", model.ClientId),
             new SqlParameter("@RecordedAt", model.RecordedAt),
-            new SqlParameter("@IsActivePlan", model.IsActivePlan),
+            new SqlParameter("@IsActivePlan", true),
             new SqlParameter("@PlanName", (object?)model.PlanName ?? DBNull.Value),
             new SqlParameter("@CoverageStartDate", model.CoverageStartDate.HasValue ? model.CoverageStartDate.Value : DBNull.Value),
             new SqlParameter("@IsNewEnrollment", model.IsNewEnrollment),

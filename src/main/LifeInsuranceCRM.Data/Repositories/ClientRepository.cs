@@ -192,7 +192,7 @@ public sealed class ClientRepository : IClientRepository
             BuildClientParameters(clientId, tenantId, model.FirstName, model.LastName, model.LegalName,
                 model.HouseholdName, model.PrimaryPhone, model.AddressLine1, model.AddressLine2, model.City,
                 model.State, model.PostalCode, model.EmailAddress, model.DateOfBirth, model.MedicareNumber,
-                model.MedicarePartAEffectiveDate, model.MedicarePartBEffectiveDate, model.IsActive,
+                model.MedicarePartAEffectiveDate, model.MedicarePartBEffectiveDate, true,
                 model.IsAcaClient, model.HasContactConsent, model.Notes, audit));
 
         return (await GetByIdAsync(clientId, cancellationToken))!;

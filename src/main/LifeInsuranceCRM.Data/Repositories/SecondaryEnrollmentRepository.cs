@@ -101,7 +101,7 @@ public sealed class SecondaryEnrollmentRepository : ISecondaryEnrollmentReposito
             new SqlParameter("@RecordedAt", model.RecordedAt),
             new SqlParameter("@PlanOrCarrierName", (object?)model.PlanOrCarrierName ?? DBNull.Value),
             new SqlParameter("@CoverageStartDate", model.CoverageStartDate.HasValue ? model.CoverageStartDate.Value : DBNull.Value),
-            new SqlParameter("@IsActiveCoverage", model.IsActiveCoverage),
+            new SqlParameter("@IsActiveCoverage", true),
             new SqlParameter("@Notes", (object?)model.Notes ?? DBNull.Value),
             new SqlParameter("@CreatedAt", audit.Timestamp),
             new SqlParameter("@CreatedByUserId", audit.UserId),

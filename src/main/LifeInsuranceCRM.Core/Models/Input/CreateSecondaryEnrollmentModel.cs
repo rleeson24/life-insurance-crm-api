@@ -10,6 +10,6 @@ public sealed record CreateSecondaryEnrollmentModel
     public DateTimeOffset RecordedAt { get; init; }
     public string? PlanOrCarrierName { get; init; }
     public DateOnly? CoverageStartDate { get; init; }
-    public bool IsActiveCoverage { get; init; }
+    public bool IsActiveCoverage { get; init; } = true;
     public string? Notes { get; init; }
 }

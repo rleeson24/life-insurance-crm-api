@@ -8,7 +8,7 @@ public sealed record CreateMajorMedicalEnrollmentModel
 {
     public Guid ClientId { get; init; }
     public DateTimeOffset RecordedAt { get; init; }
-    public bool IsActivePlan { get; init; }
+    public bool IsActivePlan { get; init; } = true;
     public string? PlanName { get; init; }
     public DateOnly? CoverageStartDate { get; init; }
     public bool IsNewEnrollment { get; init; }
