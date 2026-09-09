@@ -34,7 +34,7 @@ Use **two nested classes per scenario**:
    - Implements `IClassFixture<{Scenario}_Setup>`, constructor receives the Setup instance and stores as `private readonly {Scenario}_Setup _fixture;`.
    - **`[Fact]` methods**: Call Execute (if not done in Setup) and make **one logical assertion per test** (e.g. one method asserts Status, another asserts Result, another Verify).
 
-**Scenarios to cover**: Success path; Not found / missing data; Invalid input (e.g. empty GUID); Exception path (dependency throws; assert exception type and same instance).
+**Scenarios to cover**: Success path; Not found / missing data; Invalid input (e.g. empty GUID); Exception path (dependency throws; assert exception type and same instance). **Also cover every applicable edge-case category** in `.cursor/rules/test-edge-cases.mdc` (boundaries, null/empty, extreme numbers, invalid types, special characters, resource constraints)—one `{Scenario}_Setup` / `{Scenario}` pair per distinct edge; do not fold them into `Success`.
 
 ## Inputs and Default Returns
 

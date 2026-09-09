@@ -226,6 +226,101 @@ public class AccessImportMapperTests
         Assert.Contains(mapped.PlanNames, p => p.Kind == PlanNameKind.Medicare && p.PlanYear == 2026 && p.Name == "Humana");
     }
 
+    [Fact]
+    public void Map_NullAndEmptyCollections_ReturnsEmptyLists()
+    {
+        var mapped = _mapper.Map(new AccessImportModel(), _now);
+
+        Assert.Empty(mapped.Clients);
+        Assert.Empty(mapped.MajorMedicalEnrollments);
+        Assert.Empty(mapped.DrugPlanEnrollments);
+        Assert.Empty(mapped.SecondaryEnrollments);
+        Assert.Empty(mapped.Interactions);
+        Assert.Empty(mapped.PlanNames);
+        Assert.Empty(mapped.Warnings);
+    }
+
+    [Fact]
+    public void Map_EmptyClientArray_ReturnsNoClients()
+    {
+        var mapped = _mapper.Map(new AccessImportModel { Clients = [] }, _now);
+
+        Assert.Empty(mapped.Clients);
+    }
+
+    [Fact]
+    public void Map_PlanYearAtMinAndMax_AddsCatalogEntries()
+    {
+        var mapped = _mapper.Map(
+            new AccessImportModel
+            {
+                Clients = [Row(("ClientID", 1), ("First", "Ann"), ("Last", "Lee"))],
+                MedEnrollments =
+                [
+                    Row(
+                        ("ClientID", 1),
+                        ("Enrollments", "Min Plan"),
+                        ("StartDate", new DateTime(AccessImportLimits.MinPlanYear, 1, 1, 0, 0, 0, DateTimeKind.Utc))),
+                    Row(
+                        ("ClientID", 1),
+                        ("Enrollments", "Max Plan"),
+                        ("StartDate", new DateTime(AccessImportLimits.MaxPlanYear, 1, 1, 0, 0, 0, DateTimeKind.Utc))),
+                ],
+            },
+            _now);
+
+        Assert.Contains(
+            mapped.PlanNames,
+            p => p.Kind == PlanNameKind.Medicare && p.PlanYear == AccessImportLimits.MinPlanYear && p.Name == "Min Plan");
+        Assert.Contains(
+            mapped.PlanNames,
+            p => p.Kind == PlanNameKind.Medicare && p.PlanYear == AccessImportLimits.MaxPlanYear && p.Name == "Max Plan");
+    }
+
+    [Fact]
+    public void Map_CoverageYearJustBelowMin_OmitsCoverageDateAndUsesRecordedYearForCatalog()
+    {
+        var mapped = _mapper.Map(
+            new AccessImportModel
+            {
+                Clients = [Row(("ClientID", 1), ("First", "Ann"), ("Last", "Lee"))],
+                MedEnrollments =
+                [
+                    Row(
+                        ("ClientID", 1),
+                        ("Enrollments", "Too Old"),
+                        ("StartDate", new DateTime(AccessImportLimits.MinPlanYear - 1, 1, 1, 0, 0, 0, DateTimeKind.Utc))),
+                ],
+            },
+            _now);
+
+        Assert.Null(Assert.Single(mapped.MajorMedicalEnrollments).CoverageStartDate);
+        Assert.Equal(_now.Year, Assert.Single(mapped.PlanNames).PlanYear);
+    }
+
+    [Fact]
+    public void Map_UnicodeAndSpecialCharacters_ArePreservedOnFreeText()
+    {
+        var mapped = _mapper.Map(
+            new AccessImportModel
+            {
+                Clients =
+                [
+                    Row(
+                        ("ClientID", 1),
+                        ("First", "O'Brien"),
+                        ("Last", "李"),
+                        ("Description", "Prefers <morning> & \"quotes\"")),
+                ],
+            },
+            _now);
+
+        var client = Assert.Single(mapped.Clients);
+        Assert.Equal("O'Brien", client.FirstName);
+        Assert.Equal("李", client.LastName);
+        Assert.Equal("Prefers <morning> & \"quotes\"", client.Notes);
+    }
+
     private static Dictionary<string, JsonElement> Row(params (string Key, object? Value)[] fields)
     {
         var row = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);

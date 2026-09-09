@@ -18,8 +18,15 @@ public class RoleAuthorizationHandlerTests
     [InlineData(OrganizationRoles.Agent, AuthorizationPolicies.CanDelete, false)]
     [InlineData(OrganizationRoles.Admin, AuthorizationPolicies.CanDelete, true)]
     [InlineData(OrganizationRoles.SuperAdmin, AuthorizationPolicies.CanDelete, true)]
-    [InlineData(OrganizationRoles.SuperAdmin, AuthorizationPolicies.CanManagePlatform, true)]
-    [InlineData(OrganizationRoles.Admin, AuthorizationPolicies.CanManagePlatform, false)]
+        [InlineData(OrganizationRoles.SuperAdmin, AuthorizationPolicies.CanManagePlatform, true)]
+        [InlineData(OrganizationRoles.Admin, AuthorizationPolicies.CanManagePlatform, false)]
+        [InlineData(OrganizationRoles.Admin, AuthorizationPolicies.CanExportReports, true)]
+        [InlineData(OrganizationRoles.Agent, AuthorizationPolicies.CanExportReports, false)]
+        [InlineData(OrganizationRoles.ReadOnly, AuthorizationPolicies.CanExportReports, false)]
+        [InlineData("", AuthorizationPolicies.CanRead, false)]
+        [InlineData("   ", AuthorizationPolicies.CanRead, false)]
+        [InlineData("Owner", AuthorizationPolicies.CanRead, false)]
+        [InlineData("admin", AuthorizationPolicies.CanRead, true)]
     public async Task HandleRequirementAsync_RespectsRolePolicy(string role, string policyName, bool shouldSucceed)
     {
         var actorTracker = new ActorTracker();
@@ -40,6 +47,7 @@ public class RoleAuthorizationHandlerTests
                 OrganizationRoles.SuperAdmin,
                 OrganizationRoles.Admin),
             AuthorizationPolicies.CanManagePlatform => new RoleRequirement(OrganizationRoles.SuperAdmin),
+            AuthorizationPolicies.CanExportReports => new RoleRequirement(OrganizationRoles.Admin),
             _ => throw new ArgumentOutOfRangeException(nameof(policyName)),
         };
 
@@ -52,5 +60,19 @@ public class RoleAuthorizationHandlerTests
         await handler.HandleAsync(context);
 
         Assert.Equal(shouldSucceed, context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task HandleRequirementAsync_WhenActorNotSet_DoesNotSucceed()
+    {
+        var requirement = new RoleRequirement(OrganizationRoles.Admin);
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            new ClaimsPrincipal(),
+            resource: null);
+
+        await new RoleAuthorizationHandler(new ActorTracker()).HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
     }
 }

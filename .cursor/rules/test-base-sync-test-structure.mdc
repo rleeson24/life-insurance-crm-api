@@ -53,6 +53,10 @@ Apply when writing or refactoring unit tests for code that has **no async method
 - **`[Fact]` methods**: Assert one or a few properties each (e.g. `Name_IsMapped() => Assert.Equal("Alice", _createResult.Name);`).
 - Keeps tests small and names document the mapped field.
 
+## Edge cases (required)
+
+Cover every applicable category in `.cursor/rules/test-edge-cases.mdc`. Prefer `[Theory]` + `[InlineData]` for min/max, just-inside/just-outside, null/empty, extreme numbers, and special-character matrices. Nested classes still group distinct methods or mapping directions (`Create`, `Update`).
+
 ## Conventions
 
 - **SubjectUnderTest**: Use for the instance under test; built by `BuildSubject()` (or on first access if not using constructor flow).

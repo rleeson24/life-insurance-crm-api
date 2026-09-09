@@ -41,11 +41,44 @@ public class ClientUseCaseHelpersTests
     }
 
     [Fact]
+    public void ValidateActor_WhenAuthenticatedButUserIdNull_ReturnsUnauthorized()
+    {
+        _actorTracker.Setup(a => a.IsAuthenticated).Returns(true);
+        _actorTracker.Setup(a => a.UserId).Returns((Guid?)null);
+        _actorTracker.Setup(a => a.TenantId).Returns(_tenantId);
+
+        var response = _subject.ValidateActor(_actorTracker.Object);
+
+        Assert.Equal(UseCaseStatus.Unauthorized, response.Status);
+        Assert.Equal(ClientErrorCodes.ActorNotAuthenticated, response.ErrorCode);
+    }
+
+    [Fact]
+    public void ValidateActor_WhenAuthenticatedButTenantIdNull_ReturnsUnauthorized()
+    {
+        _actorTracker.Setup(a => a.IsAuthenticated).Returns(true);
+        _actorTracker.Setup(a => a.UserId).Returns(_userId);
+        _actorTracker.Setup(a => a.TenantId).Returns((Guid?)null);
+
+        var response = _subject.ValidateActor(_actorTracker.Object);
+
+        Assert.Equal(UseCaseStatus.Unauthorized, response.Status);
+        Assert.Equal(ClientErrorCodes.ActorNotAuthenticated, response.ErrorCode);
+    }
+
+    [Fact]
     public void ValidateClientId_WhenEmpty_ReturnsInvalidRequest()
     {
         var response = _subject.ValidateClientId(Guid.Empty);
         Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
         Assert.Equal(ClientErrorCodes.ClientIdInvalid, response.ErrorCode);
+    }
+
+    [Fact]
+    public void ValidateClientId_WhenNonEmpty_ReturnsSuccess()
+    {
+        var response = _subject.ValidateClientId(_clientId);
+        Assert.Equal(UseCaseStatus.Success, response.Status);
     }
 
     [Fact]

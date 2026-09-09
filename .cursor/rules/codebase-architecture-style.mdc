@@ -21,7 +21,7 @@ src/
 └── LifeInsuranceCRM.Tests.Utilities/  # TestBase, UseCaseTestBase, FixtureExtensions
 ```
 
-**Use case tests**: When writing or adding a new use case test class, follow `.cursor/rules/use-case-test-structure.mdc`: scenario `{Scenario}_Setup` / `{Scenario}` pattern, one assertion per test, concrete values in Setups. Copy structure from an existing test in the same feature folder when one exists.
+**Use case tests**: When writing or adding a new use case test class, follow `.cursor/rules/use-case-test-structure.mdc`: scenario `{Scenario}_Setup` / `{Scenario}` pattern, one assertion per test, concrete values in Setups. Copy structure from an existing test in the same feature folder when one exists. **Every `*Tests.cs` class** must also cover applicable edges in `.cursor/rules/test-edge-cases.mdc`.
 
 ## Architectural Layers
 

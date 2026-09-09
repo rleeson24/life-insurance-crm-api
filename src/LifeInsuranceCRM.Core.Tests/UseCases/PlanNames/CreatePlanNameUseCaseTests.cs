@@ -110,4 +110,55 @@ public class CreatePlanNameUseCaseTests : UseCaseTestBase<CreatePlanNameUseCase>
         Assert.Equal(_created.PlanNameId, response.Result!.PlanNameId);
         Assert.Equal("Humana Gold Plus", response.Result.Name);
     }
+
+    [Theory]
+    [InlineData(PlanNameInputValidator.MinPlanYear)]
+    [InlineData(PlanNameInputValidator.MaxPlanYear)]
+    public async Task Execute_WhenYearAtBounds_Inserts(short planYear)
+    {
+        var model = _inputModel with { PlanYear = planYear };
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.Agent);
+        NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        PlanNameRepository
+            .Setup(r => r.ExistsByNameAsync(PlanNameKind.Medicare, planYear, "Humana Gold Plus", null, _ct))
+            .ReturnsAsync(false);
+        PlanNameRepository
+            .Setup(r => r.InsertAsync(
+                PlanNameKind.Medicare,
+                _tenantId,
+                planYear,
+                "Humana Gold Plus",
+                It.IsAny<AuditStamp>(),
+                _ct))
+            .ReturnsAsync(_created);
+
+        var response = await BuildSubject().Execute(ProcessRequest<CreatePlanNameModel>.From(model, _ct));
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
+    }
+
+    [Theory]
+    [InlineData(PlanNameInputValidator.MinPlanYear - 1)]
+    [InlineData(PlanNameInputValidator.MaxPlanYear + 1)]
+    [InlineData(short.MinValue)]
+    [InlineData(short.MaxValue)]
+    public async Task Execute_WhenYearOutsideBounds_ReturnsInvalidRequest(short planYear)
+    {
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.Agent);
+        var model = _inputModel with { PlanYear = planYear };
+
+        var response = await BuildSubject().Execute(ProcessRequest<CreatePlanNameModel>.From(model, _ct));
+
+        Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
+        Assert.Equal(PlanNameErrorCodes.PlanYearInvalid, response.ErrorCode);
+        PlanNameRepository.Verify(
+            r => r.InsertAsync(
+                It.IsAny<PlanNameKind>(),
+                It.IsAny<Guid>(),
+                It.IsAny<short>(),
+                It.IsAny<string>(),
+                It.IsAny<AuditStamp>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }

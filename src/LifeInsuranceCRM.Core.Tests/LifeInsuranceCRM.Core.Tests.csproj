@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\main\LifeInsuranceCRM.Core\LifeInsuranceCRM.Core.csproj" />
+    <ProjectReference Include="..\main\LifeInsuranceCRM.Data\LifeInsuranceCRM.Data.csproj" />
     <ProjectReference Include="..\main\LifeInsuranceCRM.Providers\LifeInsuranceCRM.Providers.csproj" />
     <ProjectReference Include="..\LifeInsuranceCRM.Tests.Utilities\LifeInsuranceCRM.Tests.Utilities.csproj" />
   </ItemGroup>
