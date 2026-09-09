@@ -101,6 +101,20 @@ public class ImportAccessDatabaseUseCaseTests : UseCaseTestBase<ImportAccessData
     }
 
     [Fact]
+    public async Task Execute_WhenClientsCollectionNull_ReturnsInvalidRequest()
+    {
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId);
+        NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        var payload = new AccessImportModel();
+        Mapper.Setup(m => m.Map(payload, _now)).Returns(new MappedAccessImport());
+
+        var response = await BuildSubject().Execute(ProcessRequest<AccessImportModel>.From(payload, _ct));
+
+        Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
+        Assert.Equal(ImportErrorCodes.NoClients, response.ErrorCode);
+    }
+
+    [Fact]
     public async Task Execute_WhenAdminAndEmptyTenant_InsertsMappedRows()
     {
         ActorTracker.SetupAuthenticatedActor(_userId, _tenantId);
@@ -135,6 +149,26 @@ public class ImportAccessDatabaseUseCaseTests : UseCaseTestBase<ImportAccessData
         Assert.Equal(1, response.Result.InteractionsInserted);
         Assert.Equal(1, response.Result.MedicarePlanNamesInserted);
         Assert.Equal("Skipped Medicare enrollment for unknown client 99.", Assert.Single(response.Result.Warnings));
+    }
+
+    [Fact]
+    public async Task Execute_WhenCanceled_PassesTokenToRepository()
+    {
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId);
+        NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        var mapped = CreateMappedImport();
+        Mapper.Setup(m => m.Map(_payload, _now)).Returns(mapped);
+        Repository
+            .Setup(r => r.ImportAsync(mapped, _tenantId, It.IsAny<AuditStamp>(), cts.Token))
+            .ReturnsAsync(new AccessImportPersistResult());
+
+        await BuildSubject().Execute(ProcessRequest<AccessImportModel>.From(_payload, cts.Token));
+
+        Repository.Verify(
+            r => r.ImportAsync(mapped, _tenantId, It.IsAny<AuditStamp>(), cts.Token),
+            Times.Once);
     }
 
     private MappedAccessImport CreateMappedImport()

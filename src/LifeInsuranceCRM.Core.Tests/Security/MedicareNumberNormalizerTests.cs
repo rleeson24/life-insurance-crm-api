@@ -24,12 +24,37 @@ public class MedicareNumberNormalizerTests
     }
 
     [Theory]
-    [InlineData("1EG4-TE5-MK72", true)]
-    [InlineData("1EG4TE5MK72", true)]
-    [InlineData("1EG4", false)]
-    [InlineData("John Smith", false)]
-    public void IsLookupCandidate_RequiresElevenNormalizedCharacters(string input, bool expected)
+    [InlineData("1EG4TE5MK7")]
+    [InlineData("1EG4TE5MK72X")]
+    public void IsLookupCandidate_WhenNormalizedLengthIsNotEleven_ReturnsFalse(string input)
     {
-        Assert.Equal(expected, MedicareNumberNormalizer.IsLookupCandidate(input));
+        Assert.False(MedicareNumberNormalizer.IsLookupCandidate(input));
+    }
+
+    [Fact]
+    public void IsLookupCandidate_WhenNormalizedLengthIsEleven_ReturnsTrue()
+    {
+        Assert.True(MedicareNumberNormalizer.IsLookupCandidate("1EG4-TE5-MK72"));
+    }
+
+    [Theory]
+    [InlineData("***")]
+    [InlineData("李李李")]
+    [InlineData("!!!@@@")]
+    public void Normalize_WhenOnlyNonAlphanumeric_ReturnsNull(string input)
+    {
+        Assert.Null(MedicareNumberNormalizer.Normalize(input));
+    }
+
+    [Fact]
+    public void Normalize_WhenUnicodeNoiseAroundMbi_KeepsAlphanumeric()
+    {
+        Assert.Equal("1EG4TE5MK72", MedicareNumberNormalizer.Normalize("李1EG4-TE5-MK72李"));
+    }
+
+    [Fact]
+    public void IsLookupCandidate_WhenWhitespaceAroundElevenCharacters_ReturnsTrue()
+    {
+        Assert.True(MedicareNumberNormalizer.IsLookupCandidate("  1EG4TE5MK72  "));
     }
 }

@@ -89,6 +89,28 @@ public class PiiRedactorTests
     }
 
     [Fact]
+    public void Redact_WhenNullOrEmpty_ReturnsSameValue()
+    {
+        Assert.Null(PiiRedactor.Redact(null));
+        Assert.Equal(string.Empty, PiiRedactor.Redact(string.Empty));
+    }
+
+    [Fact]
+    public void Redact_LeavesUnicodeNamesIntact()
+    {
+        const string name = "李 O'Brien & <script>";
+        Assert.Equal(name, PiiRedactor.Redact(name));
+    }
+
+    [Fact]
+    public void IsPhiAttributeKey_WhenNullOrEmpty_ReturnsFalse()
+    {
+        Assert.False(PiiRedactor.IsPhiAttributeKey(null));
+        Assert.False(PiiRedactor.IsPhiAttributeKey(string.Empty));
+        Assert.False(PiiRedactor.IsPhiAttributeKey("   "));
+    }
+
+    [Fact]
     public void IsPhiAttributeKey_IgnoresEmail()
     {
         Assert.False(PiiRedactor.IsPhiAttributeKey("UserEmail"));

@@ -221,6 +221,112 @@ public class ActorResolutionMiddlewareTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task InvokeAsync_WhenAnonymous_ContinuesWithoutLookup()
+    {
+        var context = new DefaultHttpContext { Response = { Body = new MemoryStream() } };
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        var invoked = false;
+        RequestDelegate next = _ =>
+        {
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        await CreateMiddleware(next).InvokeAsync(
+            context,
+            new LifeInsuranceCRM.API.Auth.ActorTracker(),
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions()),
+            new ConfigurationBuilder().Build());
+
+        Assert.True(invoked);
+        organizationUserRepository.Verify(
+            r => r.GetUserContextAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenOidIsEmptyGuid_LooksUpEmptyGuid()
+    {
+        var context = CreateAuthenticatedContext(
+            new Claim("oid", Guid.Empty.ToString()),
+            new Claim(ClaimTypes.Email, "dev-user@localhost"));
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        organizationUserRepository
+            .Setup(r => r.GetUserContextAsync(Guid.Empty, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationUserContext?)null);
+
+        await CreateMiddleware(_ => Task.CompletedTask).InvokeAsync(
+            context,
+            new LifeInsuranceCRM.API.Auth.ActorTracker(),
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions()),
+            new ConfigurationBuilder().Build());
+
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+        organizationUserRepository.Verify(
+            r => r.GetUserContextAsync(Guid.Empty, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenEmailMissing_SetsActorWithNullEmail()
+    {
+        var context = CreateAuthenticatedContext(
+            new Claim(ClaimTypes.NameIdentifier, _userId.ToString()));
+        var actorTracker = new LifeInsuranceCRM.API.Auth.ActorTracker();
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        organizationUserRepository
+            .Setup(r => r.GetUserContextAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationUserContext(_tenantId, OrganizationRoles.Agent, IsActive: true));
+
+        string? capturedEmail = null;
+        RequestDelegate next = _ =>
+        {
+            capturedEmail = actorTracker.UserEmail;
+            return Task.CompletedTask;
+        };
+
+        await CreateMiddleware(next).InvokeAsync(
+            context,
+            actorTracker,
+            organizationUserRepository.Object,
+            new Mock<IAuthSecurityEventRecorder>().Object,
+            new ProblemDetailsFactory(),
+            Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
+            new ConfigurationBuilder().Build());
+
+        Assert.Null(capturedEmail);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenLookupCanceled_Throws()
+    {
+        var context = CreateAuthenticatedContext();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        context.RequestAborted = cts.Token;
+        var organizationUserRepository = new Mock<IOrganizationUserRepository>();
+        organizationUserRepository
+            .Setup(r => r.GetUserContextAsync(_userId, cts.Token))
+            .ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateMiddleware(_ => Task.CompletedTask).InvokeAsync(
+                context,
+                new LifeInsuranceCRM.API.Auth.ActorTracker(),
+                organizationUserRepository.Object,
+                new Mock<IAuthSecurityEventRecorder>().Object,
+                new ProblemDetailsFactory(),
+                Options.Create(new AuthOptions { UseDevelopmentAuthentication = true, DevelopmentTenantId = _tenantId }),
+                new ConfigurationBuilder().Build()));
+    }
+
     private static ActorResolutionMiddleware CreateMiddleware(RequestDelegate next) =>
         new(next, NullLogger<ActorResolutionMiddleware>.Instance);
 

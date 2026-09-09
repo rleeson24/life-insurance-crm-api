@@ -93,6 +93,79 @@ public class ProcessResponseActionMapperTests
         Assert.Contains("Forbidden", entry.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Map_Unauthorized_LogsWarningAndReturns401()
+    {
+        var logger = new RecordingLogger<ProcessResponseActionMapper>();
+        var mapper = CreateMapper(logger);
+        var context = CreateContext("GET", "/api/clients");
+
+        var result = mapper.Map(
+            ProcessResponse<int>.WithStatus(UseCaseStatus.Unauthorized, "Authentication required", "actor.not_authenticated"),
+            context);
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, ((ObjectResult)result).StatusCode);
+        Assert.Equal(LogLevel.Warning, Assert.Single(logger.Entries).Level);
+    }
+
+    [Fact]
+    public void Map_Conflict_LogsInformation()
+    {
+        var logger = new RecordingLogger<ProcessResponseActionMapper>();
+        var mapper = CreateMapper(logger);
+        var context = CreateContext("POST", "/api/plan-names");
+
+        mapper.Map(
+            ProcessResponse<int>.WithStatus(UseCaseStatus.Conflict, "That plan name already exists", "plan_name.name.already_exists"),
+            context);
+
+        Assert.Equal(LogLevel.Information, Assert.Single(logger.Entries).Level);
+    }
+
+    [Fact]
+    public void Map_Failure_LogsWarningAndReturns500()
+    {
+        var logger = new RecordingLogger<ProcessResponseActionMapper>();
+        var mapper = CreateMapper(logger);
+        var context = CreateContext("GET", "/api/reports/book");
+
+        var result = mapper.Map(
+            ProcessResponse<int>.WithStatus(UseCaseStatus.Failure, "Query failed", "unexpected_error"),
+            context);
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, ((ObjectResult)result).StatusCode);
+        Assert.Equal(LogLevel.Warning, Assert.Single(logger.Entries).Level);
+    }
+
+    [Theory]
+    [InlineData("PUT")]
+    [InlineData("PATCH")]
+    [InlineData("DELETE")]
+    public void Map_MutatingSuccess_LogsInformation(string method)
+    {
+        var logger = new RecordingLogger<ProcessResponseActionMapper>();
+        var mapper = CreateMapper(logger);
+        var context = CreateContext(method, "/api/clients/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        mapper.Map(ProcessResponse<int>.Succeeded(1), context);
+
+        Assert.Equal(LogLevel.Information, Assert.Single(logger.Entries).Level);
+    }
+
+    [Fact]
+    public void Map_InvalidRequest_WithSpecialCharactersInPath_DoesNotThrow()
+    {
+        var logger = new RecordingLogger<ProcessResponseActionMapper>();
+        var mapper = CreateMapper(logger);
+        var context = CreateContext("POST", "/api/clients/%3Cscript%3E");
+
+        var result = mapper.Map(
+            ProcessResponse<int>.InvalidRequestResponse("Name O'Brien & 李", ClientErrorCodes.FirstNameRequired),
+            context);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, ((ObjectResult)result).StatusCode);
+    }
+
     private ProcessResponseActionMapper CreateMapper(RecordingLogger<ProcessResponseActionMapper> logger)
     {
         var actorTracker = new ActorTracker();

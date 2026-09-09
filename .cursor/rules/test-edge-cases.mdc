@@ -1,0 +1,29 @@
+---
+description: Required edge-case coverage for every applicable *Tests.cs class (boundaries, null/empty, extremes, types, special chars, resources)
+globs: "**/*Tests.cs"
+alwaysApply: false
+---
+
+# Edge-case coverage (required)
+
+When writing or extending any `*Tests.cs` class, cover **every category that applies** to the subject. Skip a category only when the production code has no matching input, limit, parse step, or I/O. Happy path plus one invalid example is not complete coverage.
+
+Follow existing structure rules for *how* tests are organized (`use-case-test-structure.mdc`, `test-base-sync-test-structure.mdc`). This rule is *what* to cover.
+
+## Categories
+
+1. **Boundary values** — Exact min and max, plus just inside and just outside.
+   - Plan years: `MinPlanYear - 1`, `MinPlanYear`, `MaxPlanYear`, `MaxPlanYear + 1` (`PlanNameInputValidator` 2000–2100; `ReportConstants` 1990–2100).
+   - String max lengths: `max`, `max + 1` (e.g. name 200/201, notes 8000/8001, state exactly 2 vs 1 and 3).
+   - Pagination clamp in `ClientRepository`: page size `0`, `1`, `100`, `101`.
+2. **Null and empty** — `null`, `""`, whitespace-only, `Guid.Empty`, empty arrays/collections, omitted optional vs required fields.
+3. **Extreme numbers** — `short.MinValue` / `short.MaxValue`, `int.MinValue` / `int.MaxValue`, negatives where a positive is required (page, plan year).
+4. **Invalid types (HTTP/API)** — In `LifeInsuranceCRM.API.Tests`: wrong JSON types (string for numeric `planYear`, array for an object, boolean for a string), malformed JSON, empty body. Expect `400` and the invalid-model problem details (`request.invalid`).
+5. **Special characters** — Unicode, combining marks, quotes, leading/trailing whitespace, SQL/HTML metacharacters in string fields. Success when the field is free text; invalid or normalized when the field has a format (email, 2-letter state, Medicare number).
+6. **Resource constraints** — Payload over `AccessImportLimits.MaxRequestBodyBytes` → `413`; canceled `CancellationToken`; timeout/slow dependency mapped to the documented status. Skip for pure in-memory validators with no I/O.
+
+## How to add them
+
+- **Use cases**: one `{Scenario}_Setup` + `{Scenario}` nested pair per distinct edge. Do not fold edges into `Success`.
+- **Validators, mappers, handlers**: `[Theory]` + `[InlineData]` (or `[MemberData]`) for value matrices; `[Fact]` when setup differs.
+- Put the **concrete boundary value** in `Setup` / `Verify` / the call under test. Do not hide it behind `It.IsAny`.

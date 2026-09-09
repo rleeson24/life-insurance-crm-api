@@ -307,3 +307,8 @@ async Task InitializeDevelopmentDatabaseAsync(WebApplication webApp)
     var initializer = scope.ServiceProvider.GetRequiredService<IDevelopmentDatabaseInitializer>();
     await initializer.InitializeAsync(connectionString);
 }
+
+public partial class Program
+{
+}
+
