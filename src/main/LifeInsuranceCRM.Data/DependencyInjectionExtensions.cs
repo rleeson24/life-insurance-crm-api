@@ -19,6 +19,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISecondaryEnrollmentRepository, SecondaryEnrollmentRepository>();
         services.AddScoped<IPlanNameRepository, PlanNameRepository>();
         services.AddScoped<IAccessImportRepository, AccessImportRepository>();
+        services.AddScoped<IReportRepository, ReportRepository>();
         return services;
     }
 }

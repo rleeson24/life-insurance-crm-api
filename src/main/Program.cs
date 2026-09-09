@@ -165,6 +165,9 @@ void AddAuthentication(WebApplicationBuilder webBuilder)
                 OrganizationRoles.SuperAdmin,
                 OrganizationRoles.Admin)));
         options.AddPolicy(
+            AuthorizationPolicies.CanExportReports,
+            policy => policy.AddRequirements(new RoleRequirement(OrganizationRoles.Admin)));
+        options.AddPolicy(
             AuthorizationPolicies.CanManagePlatform,
             policy => policy.AddRequirements(new RoleRequirement(OrganizationRoles.SuperAdmin)));
     });

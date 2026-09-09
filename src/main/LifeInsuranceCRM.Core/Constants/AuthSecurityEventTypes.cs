@@ -12,4 +12,5 @@ public static class AuthSecurityEventTypes
     public const string Forbidden = "Forbidden";
     public const string Unauthorized = "Unauthorized";
     public const string RateLimitExceeded = "RateLimitExceeded";
+    public const string ReportExported = "ReportExported";
 }

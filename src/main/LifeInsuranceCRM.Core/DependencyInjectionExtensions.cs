@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.UseCases.Imports;
 using LifeInsuranceCRM.Core.UseCases.OrganizationUsers;
 using LifeInsuranceCRM.Core.UseCases.PlanNames;
+using LifeInsuranceCRM.Core.UseCases.Reports;
 using LifeInsuranceCRM.Core.UseCases.Tenants;
 using LifeInsuranceCRM.Core.Validation;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +42,7 @@ public static class DependencyInjectionExtensions
         services.AddTenantsUseCases();
         services.AddPlanNamesUseCases();
         services.AddImportsUseCases();
+        services.AddReportsUseCases();
         return services;
     }
 }
