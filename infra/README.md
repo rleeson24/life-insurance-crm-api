@@ -59,7 +59,7 @@ Override any value in `infra/parameters/*.bicepparam` or at deploy time, e.g. `-
 
 1. Azure subscription and `az` CLI logged in
 2. **Canonical subscription:** `605a6796-5cf0-4a61-80f0-ff2d484360ee` (Primary). The deploy script switches to this subscription automatically.
-3. Resource group per environment, e.g. `rg-bbcrm-dev` (can be in any region; resources use the `location` parameter)
+3. Resource group per environment: `rg-bbcrm-dev` or `rg-bbcrm-prod` (can be in any region; resources use the `location` parameter)
 4. GitHub repository environments: `dev`, `prod`
 
 SQL server, ACR, and Key Vault names are **globally unique** across all of Azure. Bicep generates names from the subscription + resource group ID so a new `rg-bbcrm-dev` never collides with resources in another subscription. When migrating existing servers/registries into this subscription, set `sqlServerNameOverride` / `acrNameOverride` in the parameter file.
@@ -82,29 +82,18 @@ Default parameter files use **`centralus`**. Override at deploy time if needed:
 
 ## First-time deploy (local)
 
-```powershell
-az group create --name rg-bbcrm-dev --location centralus
-```
+The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). After that, GitHub Actions can update the same stack.
+
+The first API revision pulls a **bootstrap image from ACR**, not from MCR. Container Apps in the VNet cannot reliably pull public MCR images, which previously ended in `Operation expired`. `deploy-infra.ps1` imports `bootstrap/aspnetapp:latest` into ACR, then creates the app. GitHub **Deploy API** replaces that image with the real API.
 
 **Safer password passing** — `az` does not accept a JSON `@parameters` file together with a `.bicepparam` file. Use the helper script (recommended):
 
 ```powershell
-.\scripts\deploy-infra-dev.ps1
+.\scripts\deploy-infra.ps1 -Environment dev
+.\scripts\deploy-infra.ps1 -Environment prod
 ```
 
-Or create a one-off `.bicepparam` with the password filled in (do not commit):
-
-```powershell
-Copy-Item infra/parameters/dev.bicepparam infra/parameters/dev.local.bicepparam
-# Edit dev.local.bicepparam: set sqlAdministratorLoginPassword to a strong value (do not commit)
-
-az deployment group create `
-  --resource-group rg-bbcrm-dev `
-  --template-file infra/main.bicep `
-  --parameters infra/parameters/dev.local.bicepparam
-
-Remove-Item infra/parameters/dev.local.bicepparam
-```
+Defaults: `rg-bbcrm-dev` / `rg-bbcrm-prod` in `centralus`. The script prompts for the SQL password and passes it as an inline `--parameters` override (do not put the password in the `.bicepparam` file — Bicep treats `\` as an escape). Wrappers `deploy-infra-dev.ps1` and `deploy-infra-prod.ps1` still work.
 
 After deploy, note outputs:
 

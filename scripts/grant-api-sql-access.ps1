@@ -3,9 +3,9 @@
 # (sqlAzureAdAdministratorObjectId in Bicep, or set via this script).
 param(
     [string]$ResourceGroup = 'rg-bbcrm-dev',
-    [string]$SqlServer = 'bbcrm-dev-sql-27j5ssfa2pgi6',
+    [string]$SqlServer = '',
     [string]$Database = 'BrokerBook',
-    [string]$ContainerAppName = 'bbcrm-dev-api',
+    [string]$ContainerAppName = '',
     [string]$SubscriptionId = '605a6796-5cf0-4a61-80f0-ff2d484360ee',
     [switch]$SkipPublicAccessToggle
 )
@@ -18,6 +18,13 @@ if ([string]::IsNullOrWhiteSpace($SqlServer)) {
     $SqlServer = az sql server list --resource-group $ResourceGroup --query '[0].name' -o tsv
     if ([string]::IsNullOrWhiteSpace($SqlServer)) {
         throw "No SQL server found in $ResourceGroup."
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($ContainerAppName)) {
+    $ContainerAppName = az containerapp list --resource-group $ResourceGroup --query "[?contains(name, '-api')].name | [0]" -o tsv
+    if ([string]::IsNullOrWhiteSpace($ContainerAppName)) {
+        throw "No API Container App found in $ResourceGroup."
     }
 }
 

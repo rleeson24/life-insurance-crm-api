@@ -57,8 +57,11 @@ param sqlAzureAdAdministratorObjectId string = ''
 @description('Entra object ID of the user or group that sets Key Vault secrets. Required to view/edit secrets in the portal or CLI; RG Owner is not enough.')
 param keyVaultSecretsOfficerPrincipalId string = ''
 
-@description('Container image for the API. Use a placeholder until the first CI deploy pushes to ACR.')
-param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+@description('Container image for the API. The deploy script imports a bootstrap image into ACR so the first revision does not pull from MCR through the VNet.')
+param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
+
+@description('When false, skip the API Container App so ACR and the pull identity can be created first.')
+param createApiContainerApp bool = true
 
 @description('Container App CPU cores as a decimal string (0.25 minimum on Consumption).')
 param containerAppCpu string = environment == 'prod' ? '0.5' : '0.25'
@@ -235,10 +238,11 @@ module containerApps 'modules/containerapps.bicep' = {
     minReplicas: containerAppMinReplicas
     maxReplicas: containerAppMaxReplicas
     corsAllowedOrigins: concat([staticWebApp.outputs.origin], additionalCorsOrigins)
+    createApiApp: createApiContainerApp
   }
 }
 
-module githubClientOidc 'modules/github-client-oidc.bicep' = {
+module githubClientOidc 'modules/github-client-oidc.bicep' = if (createApiContainerApp) {
   name: 'github-client-oidc-${environment}'
   params: {
     location: location
@@ -262,7 +266,7 @@ output sqlServerFqdn string = sql.outputs.sqlServerFqdn
 output sqlServerName string = sqlServerName
 output databaseName string = sql.outputs.databaseName
 output githubDeployClientId string = githubOidc.outputs.clientId
-output githubClientDeployClientId string = githubClientOidc.outputs.clientId
+output githubClientDeployClientId string = createApiContainerApp ? githubClientOidc!.outputs.clientId : ''
 output containerAppIdentityPrincipalId string = containerApps.outputs.apiIdentityPrincipalId
 output logAnalyticsWorkspaceId string = monitor.outputs.logAnalyticsWorkspaceId
 output staticWebAppName string = staticWebApp.outputs.name

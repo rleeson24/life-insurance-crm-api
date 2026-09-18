@@ -51,12 +51,13 @@ Do not commit vault URIs, connection strings, or `AllowLocalAccess: true`.
 
 ## One-time Azure setup after infra deploy
 
-All BrokerBook Azure resources deploy to subscription **`605a6796-5cf0-4a61-80f0-ff2d484360ee`**. `deploy-infra-dev.ps1` selects it automatically.
+All BrokerBook Azure resources deploy to subscription **`605a6796-5cf0-4a61-80f0-ff2d484360ee`**. `deploy-infra.ps1` selects it automatically.
 
 ### 1. Redeploy infra (grants Key Vault Secrets User to the API identity)
 
 ```powershell
-.\scripts\deploy-infra-dev.ps1
+.\scripts\deploy-infra.ps1 -Environment dev
+.\scripts\deploy-infra.ps1 -Environment prod
 ```
 
 Note outputs (names are auto-generated on first deploy — copy from output, do not assume `bbcrm-dev-sql`):
@@ -98,7 +99,7 @@ For an existing vault (no full redeploy):
 .\scripts\grant-keyvault-secrets-officer.ps1 -ResourceGroup rg-bbcrm-dev
 ```
 
-That assigns Secrets Officer to the signed-in user. Wait one to two minutes, then refresh the portal. Future local deploys (`deploy-infra-dev.ps1`) pass your object ID automatically. To keep the assignment in Bicep, set `keyVaultSecretsOfficerPrincipalId` in `infra/parameters/dev.bicepparam` (`az ad signed-in-user show --query id -o tsv`). That GUID is not a secret.
+That assigns Secrets Officer to the signed-in user. Wait one to two minutes, then refresh the portal. Future local deploys (`deploy-infra.ps1`) pass your object ID automatically. To keep the assignment in Bicep, set `keyVaultSecretsOfficerPrincipalId` in `infra/parameters/<env>.bicepparam` (`az ad signed-in-user show --query id -o tsv`). That GUID is not a secret.
 
 The vault is private-endpoint only. After RBAC works, a laptop can still hit a **firewall** error. Temporarily enable public access, set secrets, then disable it again (the grant script prints those commands).
 

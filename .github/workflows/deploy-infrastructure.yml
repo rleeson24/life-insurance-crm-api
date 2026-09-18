@@ -11,7 +11,7 @@ on:
           - dev
           - prod
       resourceGroup:
-        description: Azure resource group name
+        description: Azure resource group (rg-bbcrm-dev or rg-bbcrm-prod)
         required: true
         type: string
 

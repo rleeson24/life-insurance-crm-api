@@ -1,5 +1,9 @@
 using '../main.bicep'
 
+// Canonical subscription: 605a6796-5cf0-4a61-80f0-ff2d484360ee ("Primary")
+// SQL server, ACR, and Key Vault names are auto-generated per resource group (globally unique).
+// Do not set sqlServerNameOverride / acrNameOverride unless importing an existing server/registry.
+
 param environment = 'prod'
 param location = 'centralus'
 param githubOwner = 'rleeson24'
@@ -7,10 +11,13 @@ param githubOwner = 'rleeson24'
 param githubRepository = 'life-insurance-crm-api'
 param githubClientRepository = 'life-insurance-crm-client'
 param sqlAdministratorLogin = 'sqladmin'
+// Set at deploy time via deploy-infra.ps1 (password embedded in temp .bicepparam)
 param sqlAdministratorLoginPassword = ''
-param sqlAzureAdAdministratorObjectId = ''
-param keyVaultSecretsOfficerPrincipalId = ''
-param containerImage = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+param sqlAzureAdAdministratorObjectId = 'e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'
+// Entra object ID of the operator who sets vault secrets (az ad signed-in-user show --query id -o tsv).
+param keyVaultSecretsOfficerPrincipalId = 'e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'
+// Overridden at deploy time to the ACR bootstrap image (imported by deploy-infra.ps1).
+param containerImage = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
 // Minimal prod sizing — one small always-on replica; bump sqlSkuName/sqlSkuTier to S0/Standard when Basic is too small
 param containerAppCpu = '0.5'
