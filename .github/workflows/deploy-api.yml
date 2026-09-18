@@ -76,7 +76,13 @@ jobs:
             --resource-group "${{ inputs.resourceGroup }}" \
             --server "${{ steps.azure.outputs.acr_login_server }}" \
             --identity system
+          az containerapp ingress update \
+            --name "${{ steps.azure.outputs.container_app_name }}" \
+            --resource-group "${{ inputs.resourceGroup }}" \
+            --target-port 8080 \
+            --type external
           az containerapp update \
             --name "${{ steps.azure.outputs.container_app_name }}" \
             --resource-group "${{ inputs.resourceGroup }}" \
-            --image "$IMAGE_DIGEST"
+            --image "$IMAGE_DIGEST" \
+            --min-replicas "${{ inputs.environment == 'prod' && 1 || 0 }}"

@@ -6,7 +6,7 @@ DECLARE @SystemUserId uniqueidentifier = '00000000-0000-0000-0000-000000000001';
 IF NOT EXISTS (SELECT 1 FROM dbo.Tenants WHERE TenantId = @TenantId)
 BEGIN
     INSERT INTO dbo.Tenants (TenantId, Name, CreatedByUserId, UpdatedByUserId)
-    VALUES (@TenantId, N'Development Tenant', @SystemUserId, @SystemUserId);
+    VALUES (@TenantId, N'SuperAdmin Tenant', @SystemUserId, @SystemUserId);
 END
 
 IF NOT EXISTS (SELECT 1 FROM dbo.OrganizationUsers WHERE UserId = @DevUserId AND TenantId = @TenantId)
@@ -14,7 +14,7 @@ BEGIN
     INSERT INTO dbo.OrganizationUsers (
         TenantId, UserId, EmailAddress, DisplayName, Role, CreatedByUserId, UpdatedByUserId)
     VALUES (
-        @TenantId, @DevUserId, N'dev-user@localhost', N'Development User', N'SuperAdmin', @SystemUserId, @SystemUserId);
+        @TenantId, @DevUserId, N'user@localhost', N'SuperAdmin User', N'SuperAdmin', @SystemUserId, @SystemUserId);
 END
 ELSE IF COL_LENGTH('dbo.OrganizationUsers', 'Role') IS NOT NULL
 BEGIN

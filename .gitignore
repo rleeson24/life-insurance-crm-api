@@ -52,6 +52,7 @@ TestResults/
 infra/**/*.json
 infra/parameters/*.local.json
 infra/parameters/*.local.bicepparam
+infra/parameters/*.sql-admin-password.txt
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

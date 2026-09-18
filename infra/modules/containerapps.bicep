@@ -16,6 +16,9 @@ param memory string
 param minReplicas int
 param maxReplicas int
 
+@description('When false, create the environment and ACR pull identity only. Used so the deploy script can import a bootstrap image before the first revision.')
+param createApiApp bool = true
+
 @description('Browser origins allowed to call the API (Static Web App URL and optional extras).')
 param corsAllowedOrigins array = []
 
@@ -23,6 +26,36 @@ var corsEnv = [for (origin, i) in corsAllowedOrigins: {
   name: 'Cors__AllowedOrigins__${i}'
   value: origin
 }]
+
+// Placeholder images do not serve /alive or /health. Probing them on 8080
+// leaves the first revision Pending until ARM returns "Operation expired".
+var isPlaceholderImage = contains(containerImage, 'containerapps-helloworld') || contains(containerImage, 'dotnet/samples') || contains(containerImage, '/bootstrap/')
+// Hello-world listens on 80; the .NET sample, ACR bootstrap, and the real API listen on 8080.
+var ingressTargetPort = contains(containerImage, 'containerapps-helloworld') ? 80 : 8080
+var effectiveMinReplicas = isPlaceholderImage ? 0 : minReplicas
+var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+var apiProbes = [
+  {
+    type: 'Liveness'
+    httpGet: {
+      path: '/alive'
+      port: 8080
+      scheme: 'HTTP'
+    }
+    initialDelaySeconds: 10
+    periodSeconds: 30
+  }
+  {
+    type: 'Readiness'
+    httpGet: {
+      path: '/health'
+      port: 8080
+      scheme: 'HTTP'
+    }
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  }
+]
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: split(logAnalyticsWorkspaceId, '/')[8]
@@ -34,6 +67,23 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
+}
+
+resource apiPullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${baseName}-api-pull'
+  location: location
+  tags: tags
+}
+
+// Assign AcrPull before the Container App exists so the first revision can pull from ACR.
+resource acrPullForUai 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(acr.id, apiPullIdentity.id, acrPullRoleDefinitionId)
+  scope: acr
+  properties: {
+    roleDefinitionId: acrPullRoleDefinitionId
+    principalId: apiPullIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
 }
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -56,12 +106,15 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
   }
 }
 
-resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
+resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = if (createApiApp) {
   name: '${baseName}-api'
   location: location
   tags: tags
   identity: {
-    type: 'SystemAssigned'
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: {
+      '${apiPullIdentity.id}': {}
+    }
   }
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
@@ -69,7 +122,7 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 8080
+        targetPort: ingressTargetPort
         transport: 'auto'
         allowInsecure: false
         traffic: [
@@ -79,13 +132,10 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      // Always register ACR + system identity. The first image is often the MCR
-      // hello-world placeholder; omitting this leaves later `az containerapp update
-      // --image` pulls unauthorized (ACR admin is disabled).
       registries: [
         {
           server: acrLoginServer
-          identity: 'system'
+          identity: apiPullIdentity.id
         }
       ]
     }
@@ -98,28 +148,7 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/alive'
-                port: 8080
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 10
-              periodSeconds: 30
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 10
-              periodSeconds: 15
-            }
-          ]
+          probes: isPlaceholderImage ? [] : apiProbes
           env: concat(
             [
               {
@@ -152,19 +181,23 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: minReplicas
+        minReplicas: effectiveMinReplicas
         maxReplicas: maxReplicas
       }
     }
   }
+  dependsOn: [
+    acrPullForUai
+  ]
 }
 
-resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.id, apiContainerApp.id, '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+// GitHub `az containerapp registry set --identity system` uses this after the app exists.
+resource acrPullForSystem 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createApiApp) {
+  name: guid(acr.id, apiContainerApp!.id, acrPullRoleDefinitionId)
   scope: acr
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-    principalId: apiContainerApp.identity.principalId
+    roleDefinitionId: acrPullRoleDefinitionId
+    principalId: apiContainerApp!.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -172,26 +205,27 @@ resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var keyVaultCryptoUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')
 
-resource keyVaultSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, apiContainerApp.id, keyVaultSecretsUserRoleDefinitionId)
+resource keyVaultSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createApiApp) {
+  name: guid(keyVault.id, apiContainerApp!.id, keyVaultSecretsUserRoleDefinitionId)
   scope: keyVault
   properties: {
     roleDefinitionId: keyVaultSecretsUserRoleDefinitionId
-    principalId: apiContainerApp.identity.principalId
+    principalId: apiContainerApp!.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
-resource keyVaultCryptoUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, apiContainerApp.id, keyVaultCryptoUserRoleDefinitionId)
+resource keyVaultCryptoUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createApiApp) {
+  name: guid(keyVault.id, apiContainerApp!.id, keyVaultCryptoUserRoleDefinitionId)
   scope: keyVault
   properties: {
     roleDefinitionId: keyVaultCryptoUserRoleDefinitionId
-    principalId: apiContainerApp.identity.principalId
+    principalId: apiContainerApp!.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
-output apiName string = apiContainerApp.name
-output apiFqdn string = apiContainerApp.properties.configuration.ingress.fqdn
-output apiIdentityPrincipalId string = apiContainerApp.identity.principalId
+output apiName string = createApiApp ? apiContainerApp!.name : ''
+output apiFqdn string = createApiApp ? apiContainerApp!.properties.configuration.ingress.fqdn : ''
+output apiIdentityPrincipalId string = createApiApp ? apiContainerApp!.identity.principalId : ''
+output apiPullIdentityId string = apiPullIdentity.id
