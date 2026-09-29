@@ -16,7 +16,8 @@ RETURNS TABLE
 WITH SCHEMABINDING
 AS
 RETURN SELECT 1 AS fn_TenantFilter_Result
-WHERE @TenantId = TRY_CAST(SESSION_CONTEXT(N'TenantId') AS uniqueidentifier);
+WHERE @TenantId = TRY_CAST(SESSION_CONTEXT(N'TenantId') AS uniqueidentifier)
+   OR TRY_CAST(SESSION_CONTEXT(N'BypassTenantFilter') AS bit) = 1;
 GO
 
 CREATE SECURITY POLICY dbo.TenantPolicy

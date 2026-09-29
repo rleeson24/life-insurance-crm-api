@@ -10,11 +10,18 @@ public sealed class DbExecutor : IDbExecutor
 {
     private readonly DatabaseOptions _options;
     private readonly IActorTracker _actorTracker;
+    private int _bypassTenantFilterDepth;
 
     public DbExecutor(IOptions<DatabaseOptions> options, IActorTracker actorTracker)
     {
         _options = options.Value;
         _actorTracker = actorTracker;
+    }
+
+    public IDisposable BypassTenantFilter()
+    {
+        _bypassTenantFilterDepth++;
+        return new BypassTenantFilterScope(this);
     }
 
     public async Task<int> ExecuteNonQueryAsync(
@@ -60,6 +67,7 @@ public sealed class DbExecutor : IDbExecutor
         var connection = CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await ApplyTenantSessionContextAsync(connection, cancellationToken);
+        await ApplyBypassTenantFilterAsync(connection, cancellationToken);
         return connection;
     }
 
@@ -77,6 +85,20 @@ public sealed class DbExecutor : IDbExecutor
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private async Task ApplyBypassTenantFilterAsync(SqlConnection connection, CancellationToken cancellationToken)
+    {
+        if (_bypassTenantFilterDepth <= 0)
+        {
+            return;
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "EXEC sys.sp_set_session_context @key = N'BypassTenantFilter', @value = @bypass, @read_only = 1;";
+        command.Parameters.Add(new SqlParameter("@bypass", System.Data.SqlDbType.Bit) { Value = true });
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private SqlConnection CreateConnection() => new(_options.ConnectionString);
 
     private static SqlCommand CreateCommand(SqlConnection connection, string sql, SqlParameter[] parameters)
@@ -89,6 +111,24 @@ public sealed class DbExecutor : IDbExecutor
         }
 
         return command;
+    }
+
+    private sealed class BypassTenantFilterScope : IDisposable
+    {
+        private DbExecutor? _executor;
+
+        public BypassTenantFilterScope(DbExecutor executor) => _executor = executor;
+
+        public void Dispose()
+        {
+            if (_executor is null)
+            {
+                return;
+            }
+
+            _executor._bypassTenantFilterDepth--;
+            _executor = null;
+        }
     }
 
     private static SqlParameter CloneParameter(SqlParameter source) =>

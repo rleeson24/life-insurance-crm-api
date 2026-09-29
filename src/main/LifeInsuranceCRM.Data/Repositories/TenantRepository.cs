@@ -8,7 +8,13 @@ namespace LifeInsuranceCRM.Data.Repositories;
 public sealed class TenantRepository : ITenantRepository
 {
     private const string TenantSelectColumns = """
-        TenantId, Name, IsActive, CreatedAt, UpdatedAt
+        t.TenantId, t.Name, t.IsActive, t.CreatedAt, t.UpdatedAt,
+        (
+            SELECT COUNT(*)
+            FROM dbo.Clients c
+            WHERE c.TenantId = t.TenantId
+              AND c.IsDeleted = 0
+        ) AS ClientCount
         """;
 
     private readonly IDbExecutor _dbExecutor;
@@ -22,11 +28,12 @@ public sealed class TenantRepository : ITenantRepository
     {
         var sql = $"""
             SELECT {TenantSelectColumns}
-            FROM dbo.Tenants
-            WHERE IsDeleted = 0
-            ORDER BY Name;
+            FROM dbo.Tenants t
+            WHERE t.IsDeleted = 0
+            ORDER BY t.Name;
             """;
 
+        using var bypass = _dbExecutor.BypassTenantFilter();
         var tenants = new List<TenantDto>();
         await _dbExecutor.ExecuteReaderAsync(
             sql,
@@ -46,8 +53,8 @@ public sealed class TenantRepository : ITenantRepository
     {
         var sql = $"""
             SELECT {TenantSelectColumns}
-            FROM dbo.Tenants
-            WHERE TenantId = @TenantId AND IsDeleted = 0;
+            FROM dbo.Tenants t
+            WHERE t.TenantId = @TenantId AND t.IsDeleted = 0;
             """;
 
         TenantDto? tenant = null;
@@ -127,6 +134,7 @@ public sealed class TenantRepository : ITenantRepository
         TenantId = reader.GetGuid("TenantId"),
         Name = reader.GetString(reader.GetOrdinal("Name")),
         IsActive = reader.GetBoolean("IsActive"),
+        ClientCount = reader.GetInt32("ClientCount"),
         CreatedAt = reader.GetDateTimeOffset("CreatedAt"),
         UpdatedAt = reader.GetDateTimeOffset("UpdatedAt"),
     };
