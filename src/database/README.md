@@ -7,7 +7,7 @@
 
 ## Applying live scripts
 
-Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`012` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
+Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`013` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
 
 **Azure SQL** (private-endpoint server; uses your Entra login and briefly opens public access):
 
@@ -56,6 +56,8 @@ Standalone API: set `Database:ConnectionString` in `appsettings.Development.json
 ## RLS
 
 API sets `SESSION_CONTEXT('TenantId')` after JWT validation. `OrganizationUsers` is **not** RLS-protected so tenant resolution can query by `UserId` before session context is established.
+
+SuperAdmin platform queries (organization client counts and auth security events) also set `SESSION_CONTEXT('BypassTenantFilter')`. That flag is not set for ordinary tenant requests.
 
 ## Medicare dates
 

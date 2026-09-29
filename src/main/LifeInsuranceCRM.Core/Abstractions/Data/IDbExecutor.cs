@@ -4,6 +4,11 @@ namespace LifeInsuranceCRM.Core.Abstractions.Data;
 
 public interface IDbExecutor
 {
+    /// <summary>
+    /// Lets the next commands on this executor read every tenant. SuperAdmin platform queries only.
+    /// </summary>
+    IDisposable BypassTenantFilter();
+
     Task<int> ExecuteNonQueryAsync(
         string sql,
         CancellationToken cancellationToken = default,

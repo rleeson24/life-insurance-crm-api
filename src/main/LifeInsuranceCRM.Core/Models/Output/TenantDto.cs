@@ -12,6 +12,8 @@ public sealed class TenantDto
 
     public bool IsActive { get; init; }
 
+    public int ClientCount { get; init; }
+
     public DateTimeOffset CreatedAt { get; init; }
 
     public DateTimeOffset UpdatedAt { get; init; }

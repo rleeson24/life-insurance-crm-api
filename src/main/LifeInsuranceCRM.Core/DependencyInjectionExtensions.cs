@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Services;
+using LifeInsuranceCRM.Core.UseCases.AuthSecurityEvents;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.UseCases.Imports;
 using LifeInsuranceCRM.Core.UseCases.OrganizationUsers;
@@ -40,6 +41,7 @@ public static class DependencyInjectionExtensions
         services.AddClientsUseCases();
         services.AddOrganizationUsersUseCases();
         services.AddTenantsUseCases();
+        services.AddAuthSecurityEventsUseCases();
         services.AddPlanNamesUseCases();
         services.AddImportsUseCases();
         services.AddReportsUseCases();
