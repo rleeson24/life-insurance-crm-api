@@ -19,18 +19,18 @@ public sealed class ListClientsUseCase : IListClientsUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IClientRepository _clientRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListClientsUseCase(
         IActorTracker actorTracker,
         IClientRepository clientRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ListClientsResult>> Execute(ProcessRequest<ListClientsRequest> request)
@@ -42,8 +42,7 @@ public sealed class ListClientsUseCase : IListClientsUseCase
         }
 
         var result = await _clientRepository.ListAsync(request.Payload, request.CancellationToken);
-        await SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        await _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ClientListed,
             success: true,
             resource: "clients",

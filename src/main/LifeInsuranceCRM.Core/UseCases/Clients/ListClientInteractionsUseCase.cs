@@ -22,7 +22,7 @@ public sealed class ListClientInteractionsUseCase : IListClientInteractionsUseCa
     private readonly IClientInteractionRepository _clientInteractionRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListClientInteractionsUseCase(
         IActorTracker actorTracker,
@@ -30,14 +30,14 @@ public sealed class ListClientInteractionsUseCase : IListClientInteractionsUseCa
         IClientInteractionRepository clientInteractionRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _clientInteractionRepository = clientInteractionRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<IReadOnlyList<ClientInteractionDto>>> Execute(
@@ -74,8 +74,7 @@ public sealed class ListClientInteractionsUseCase : IListClientInteractionsUseCa
         int resultCount,
         int httpStatus,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.InteractionListed,
             success,
             resource: "interactions",

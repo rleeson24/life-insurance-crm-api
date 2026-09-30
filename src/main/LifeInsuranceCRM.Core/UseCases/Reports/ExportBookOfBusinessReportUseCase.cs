@@ -20,18 +20,18 @@ public sealed class ExportBookOfBusinessReportUseCase : IExportBookOfBusinessRep
     private readonly IActorTracker _actorTracker;
     private readonly IGetBookOfBusinessReportUseCase _getBookOfBusinessReportUseCase;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ExportBookOfBusinessReportUseCase(
         IActorTracker actorTracker,
         IGetBookOfBusinessReportUseCase getBookOfBusinessReportUseCase,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _getBookOfBusinessReportUseCase = getBookOfBusinessReportUseCase;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<BookOfBusinessReportDto>> Execute(
@@ -43,7 +43,7 @@ public sealed class ExportBookOfBusinessReportUseCase : IExportBookOfBusinessRep
             await RecordExportAsync(
                 request.CancellationToken,
                 success: false,
-                httpStatus: SecurityAudit.FromStatus(validation.Status),
+                httpStatus: _securityAudit.FromStatus(validation.Status),
                 failureReason: validation.Status == UseCaseStatus.Forbidden
                     ? "Export requires administrator role"
                     : "Authentication required");
@@ -56,7 +56,7 @@ public sealed class ExportBookOfBusinessReportUseCase : IExportBookOfBusinessRep
             await RecordExportAsync(
                 request.CancellationToken,
                 success: false,
-                httpStatus: SecurityAudit.FromStatus(report.Status),
+                httpStatus: _securityAudit.FromStatus(report.Status),
                 failureReason: "Report query failed");
             return report;
         }
@@ -75,8 +75,7 @@ public sealed class ExportBookOfBusinessReportUseCase : IExportBookOfBusinessRep
         int httpStatus,
         int? resultCount = null,
         string? failureReason = null) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ReportExported,
             success,
             Resource,

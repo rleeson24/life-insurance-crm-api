@@ -20,6 +20,7 @@ public static class DependencyInjectionExtensions
         services.AddSingleton<INowProvider, UtcNowProvider>();
         services.AddScoped<IProcessRequestFactory, ProcessRequestFactory>();
         services.AddScoped<IAuthSecurityEventRecorder, AuthSecurityEventRecorder>();
+        services.AddScoped<ISecurityAudit, SecurityAudit>();
         services.AddScoped<IClientMapper, ClientMapper>();
         services.AddScoped<IClientUseCaseHelpers, ClientUseCaseHelpers>();
         services.AddScoped<IClientInputValidator, ClientInputValidator>();

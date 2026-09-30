@@ -21,20 +21,20 @@ public sealed class GetClientUseCase : IGetClientUseCase
     private readonly IClientRepository _clientRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public GetClientUseCase(
         IActorTracker actorTracker,
         IClientRepository clientRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ClientDto>> Execute(ProcessRequest<GetClientRequest> request)
@@ -65,8 +65,7 @@ public sealed class GetClientUseCase : IGetClientUseCase
         int resultCount,
         int httpStatus,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ClientViewed,
             success,
             resource: "clients",

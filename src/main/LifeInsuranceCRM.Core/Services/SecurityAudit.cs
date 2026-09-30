@@ -3,7 +3,7 @@ using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.Services;
 
-public static class SecurityAudit
+public sealed class SecurityAudit : ISecurityAudit
 {
     public const int StatusOk = 200;
     public const int StatusCreated = 201;
@@ -15,7 +15,14 @@ public static class SecurityAudit
     public const int StatusConflict = 409;
     public const int StatusTooManyRequests = 429;
 
-    public static int FromStatus(UseCaseStatus status) => status switch
+    private readonly IAuthSecurityEventRecorder _recorder;
+
+    public SecurityAudit(IAuthSecurityEventRecorder recorder)
+    {
+        _recorder = recorder;
+    }
+
+    public int FromStatus(UseCaseStatus status) => status switch
     {
         UseCaseStatus.Success => StatusOk,
         UseCaseStatus.InvalidRequest => StatusBadRequest,
@@ -26,8 +33,7 @@ public static class SecurityAudit
         _ => 500,
     };
 
-    public static Task RecordAsync(
-        IAuthSecurityEventRecorder recorder,
+    public Task RecordAsync(
         string eventType,
         bool success,
         string resource,
@@ -37,7 +43,7 @@ public static class SecurityAudit
         Guid? targetId = null,
         string? detail = null,
         string? failureReason = null) =>
-        recorder.RecordAsync(
+        _recorder.RecordAsync(
             eventType,
             success,
             failureReason,

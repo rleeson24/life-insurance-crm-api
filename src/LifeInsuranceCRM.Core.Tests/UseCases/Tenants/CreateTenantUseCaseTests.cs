@@ -51,7 +51,7 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
             TenantRepository.Object,
             new ClientUseCaseHelpers(),
             new TenantInputValidator(),
-            NullAuthSecurityEventRecorder.Instance);
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     [Fact]
     public async Task Execute_WhenAdmin_ReturnsForbidden()
@@ -106,7 +106,7 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
             TenantRepository.Object,
             new ClientUseCaseHelpers(),
             new TenantInputValidator(),
-            recorder.Object);
+            new SecurityAudit(recorder.Object));
 
         var response = await subject.Execute(ProcessRequest<CreateTenantModel>.From(_inputModel, _ct));
 

@@ -21,18 +21,18 @@ public sealed class GetMailingListReportUseCase : IGetMailingListReportUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IReportRepository _reportRepository;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public GetMailingListReportUseCase(
         IActorTracker actorTracker,
         IReportRepository reportRepository,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _reportRepository = reportRepository;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<MailingListReportDto>> Execute(
@@ -48,8 +48,7 @@ public sealed class GetMailingListReportUseCase : IGetMailingListReportUseCase
         var report = await _reportRepository.GetMailingListAsync(request.CancellationToken);
         if (recordView)
         {
-            await SecurityAudit.RecordAsync(
-                _authSecurityEventRecorder,
+            await _securityAudit.RecordAsync(
                 AuthSecurityEventTypes.ReportViewed,
                 success: true,
                 resource: "mailing",

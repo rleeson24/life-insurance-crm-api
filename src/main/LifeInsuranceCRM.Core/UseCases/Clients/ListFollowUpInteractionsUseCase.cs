@@ -19,18 +19,18 @@ public sealed class ListFollowUpInteractionsUseCase : IListFollowUpInteractionsU
     private readonly IActorTracker _actorTracker;
     private readonly IClientInteractionRepository _clientInteractionRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListFollowUpInteractionsUseCase(
         IActorTracker actorTracker,
         IClientInteractionRepository clientInteractionRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientInteractionRepository = clientInteractionRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<IReadOnlyList<FollowUpInteractionDto>>> Execute(
@@ -43,8 +43,7 @@ public sealed class ListFollowUpInteractionsUseCase : IListFollowUpInteractionsU
         }
 
         var interactions = await _clientInteractionRepository.ListFollowUpsAsync(request.CancellationToken);
-        await SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        await _securityAudit.RecordAsync(
             AuthSecurityEventTypes.FollowUpsListed,
             success: true,
             resource: "follow-ups",

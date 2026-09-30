@@ -22,7 +22,7 @@ public sealed class ListSecondaryEnrollmentsUseCase : IListSecondaryEnrollmentsU
     private readonly ISecondaryEnrollmentRepository _secondaryEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListSecondaryEnrollmentsUseCase(
         IActorTracker actorTracker,
@@ -30,14 +30,14 @@ public sealed class ListSecondaryEnrollmentsUseCase : IListSecondaryEnrollmentsU
         ISecondaryEnrollmentRepository secondaryEnrollmentRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _secondaryEnrollmentRepository = secondaryEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<IReadOnlyList<SecondaryEnrollmentDto>>> Execute(
@@ -74,8 +74,7 @@ public sealed class ListSecondaryEnrollmentsUseCase : IListSecondaryEnrollmentsU
         int resultCount,
         int httpStatus,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.EnrollmentListed,
             success,
             resource: "secondary",

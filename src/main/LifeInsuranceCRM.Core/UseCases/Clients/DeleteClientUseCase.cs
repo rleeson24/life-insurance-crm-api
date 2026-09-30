@@ -19,20 +19,20 @@ public sealed class DeleteClientUseCase : IDeleteClientUseCase
     private readonly INowProvider _nowProvider;
     private readonly IClientRepository _clientRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public DeleteClientUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IClientRepository clientRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientRepository = clientRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteClientRequest> request)
@@ -67,8 +67,7 @@ public sealed class DeleteClientUseCase : IDeleteClientUseCase
         bool success,
         int httpStatus,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ClientDeleted,
             success,
             resource: "clients",

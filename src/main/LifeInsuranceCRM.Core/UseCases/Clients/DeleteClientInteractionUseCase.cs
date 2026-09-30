@@ -19,20 +19,20 @@ public sealed class DeleteClientInteractionUseCase : IDeleteClientInteractionUse
     private readonly INowProvider _nowProvider;
     private readonly IClientInteractionRepository _clientInteractionRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public DeleteClientInteractionUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IClientInteractionRepository clientInteractionRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientInteractionRepository = clientInteractionRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteClientInteractionRequest> request)
@@ -74,8 +74,7 @@ public sealed class DeleteClientInteractionUseCase : IDeleteClientInteractionUse
         ProcessRequest<DeleteClientInteractionRequest> request,
         bool success,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.InteractionDeleted,
             success,
             resource: "interactions",

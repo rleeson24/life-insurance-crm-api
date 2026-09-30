@@ -23,7 +23,7 @@ public sealed class UpdateTenantUseCase : IUpdateTenantUseCase
     private readonly ITenantRepository _tenantRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly ITenantInputValidator _tenantInputValidator;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public UpdateTenantUseCase(
         IActorTracker actorTracker,
@@ -31,14 +31,14 @@ public sealed class UpdateTenantUseCase : IUpdateTenantUseCase
         ITenantRepository tenantRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
         ITenantInputValidator tenantInputValidator,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _tenantRepository = tenantRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _tenantInputValidator = tenantInputValidator;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<TenantDto>> Execute(ProcessRequest<UpdateTenantModel> request)
@@ -120,8 +120,7 @@ public sealed class UpdateTenantUseCase : IUpdateTenantUseCase
         int httpStatus,
         string? detail,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.TenantChanged,
             success,
             resource: "tenants",

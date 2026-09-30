@@ -24,7 +24,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
     private readonly ITenantRepository _tenantRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly IOrganizationUserInputValidator _organizationUserInputValidator;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public CreateOrganizationUserUseCase(
         IActorTracker actorTracker,
@@ -33,7 +33,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
         ITenantRepository tenantRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
         IOrganizationUserInputValidator organizationUserInputValidator,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
@@ -41,7 +41,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
         _tenantRepository = tenantRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _organizationUserInputValidator = organizationUserInputValidator;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<OrganizationUserDto>> Execute(
@@ -87,8 +87,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
             audit,
             request.CancellationToken);
 
-        await SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        await _securityAudit.RecordAsync(
             AuthSecurityEventTypes.OrganizationUserChanged,
             success: true,
             resource: "organization-users",

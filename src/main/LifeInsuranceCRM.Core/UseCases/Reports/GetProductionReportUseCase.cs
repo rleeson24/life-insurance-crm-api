@@ -21,18 +21,18 @@ public sealed class GetProductionReportUseCase : IGetProductionReportUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IReportRepository _reportRepository;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public GetProductionReportUseCase(
         IActorTracker actorTracker,
         IReportRepository reportRepository,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _reportRepository = reportRepository;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ProductionReportDto>> Execute(
@@ -50,8 +50,7 @@ public sealed class GetProductionReportUseCase : IGetProductionReportUseCase
         {
             if (recordView)
             {
-                await SecurityAudit.RecordAsync(
-                    _authSecurityEventRecorder,
+                await _securityAudit.RecordAsync(
                     AuthSecurityEventTypes.ReportViewed,
                     success: false,
                     resource: $"production:{request.Payload.PlanYear}",
@@ -83,8 +82,7 @@ public sealed class GetProductionReportUseCase : IGetProductionReportUseCase
         };
         if (recordView)
         {
-            await SecurityAudit.RecordAsync(
-                _authSecurityEventRecorder,
+            await _securityAudit.RecordAsync(
                 AuthSecurityEventTypes.ReportViewed,
                 success: true,
                 resource: $"production:{request.Payload.PlanYear}",

@@ -2,6 +2,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -31,7 +32,7 @@ public class ListClientsUseCaseTests : UseCaseTestBase<ListClientsUseCase>
     }
 
     protected override ListClientsUseCase BuildSubject() =>
-        new(ActorTracker.Object, ClientRepository.Object, new ClientUseCaseHelpers(), NullAuthSecurityEventRecorder.Instance);
+        new(ActorTracker.Object, ClientRepository.Object, new ClientUseCaseHelpers(), new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public sealed class Success_Setup : ListClientsUseCaseTests, IAsyncLifetime
     {
@@ -146,7 +147,7 @@ public class ListClientsUseCaseTests : UseCaseTestBase<ListClientsUseCase>
             ActorTracker.Object,
             ClientRepository.Object,
             new ClientUseCaseHelpers(),
-            recorder.Object);
+            new SecurityAudit(recorder.Object));
 
         var response = await subject.Execute(ProcessRequest<ListClientsRequest>.From(searchRequest, _ct));
 

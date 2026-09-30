@@ -2,6 +2,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
@@ -63,7 +64,7 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
             TenantRepository.Object,
             new ClientUseCaseHelpers(),
             new OrganizationUserInputValidator(),
-            NullAuthSecurityEventRecorder.Instance);
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     [Fact]
     public async Task Execute_WhenValid_InsertsIntoActorTenant()

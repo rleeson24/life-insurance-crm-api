@@ -19,20 +19,20 @@ public sealed class DeleteDrugPlanEnrollmentUseCase : IDeleteDrugPlanEnrollmentU
     private readonly INowProvider _nowProvider;
     private readonly IDrugPlanEnrollmentRepository _drugPlanEnrollmentRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public DeleteDrugPlanEnrollmentUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IDrugPlanEnrollmentRepository drugPlanEnrollmentRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _drugPlanEnrollmentRepository = drugPlanEnrollmentRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteDrugPlanEnrollmentRequest> request)
@@ -74,8 +74,7 @@ public sealed class DeleteDrugPlanEnrollmentUseCase : IDeleteDrugPlanEnrollmentU
         ProcessRequest<DeleteDrugPlanEnrollmentRequest> request,
         bool success,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.EnrollmentDeleted,
             success,
             resource: "drug",

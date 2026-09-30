@@ -19,20 +19,20 @@ public sealed class DeleteSecondaryEnrollmentUseCase : IDeleteSecondaryEnrollmen
     private readonly INowProvider _nowProvider;
     private readonly ISecondaryEnrollmentRepository _secondaryEnrollmentRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public DeleteSecondaryEnrollmentUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         ISecondaryEnrollmentRepository secondaryEnrollmentRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _secondaryEnrollmentRepository = secondaryEnrollmentRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteSecondaryEnrollmentRequest> request)
@@ -74,8 +74,7 @@ public sealed class DeleteSecondaryEnrollmentUseCase : IDeleteSecondaryEnrollmen
         ProcessRequest<DeleteSecondaryEnrollmentRequest> request,
         bool success,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.EnrollmentDeleted,
             success,
             resource: "secondary",

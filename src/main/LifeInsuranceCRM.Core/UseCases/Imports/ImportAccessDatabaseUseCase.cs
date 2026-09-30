@@ -25,7 +25,7 @@ public sealed class ImportAccessDatabaseUseCase : IImportAccessDatabaseUseCase
     private readonly IAccessImportMapper _accessImportMapper;
     private readonly IAccessImportRepository _accessImportRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public ImportAccessDatabaseUseCase(
@@ -34,7 +34,7 @@ public sealed class ImportAccessDatabaseUseCase : IImportAccessDatabaseUseCase
         IAccessImportMapper accessImportMapper,
         IAccessImportRepository accessImportRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder,
+        ISecurityAudit securityAudit,
         IHttpContextAccessor httpContextAccessor)
     {
         _actorTracker = actorTracker;
@@ -42,7 +42,7 @@ public sealed class ImportAccessDatabaseUseCase : IImportAccessDatabaseUseCase
         _accessImportMapper = accessImportMapper;
         _accessImportRepository = accessImportRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -157,8 +157,7 @@ public sealed class ImportAccessDatabaseUseCase : IImportAccessDatabaseUseCase
         var secondary = result?.SecondaryEnrollmentsInserted ?? mapped.SecondaryEnrollments.Count;
         var interactions = result?.InteractionsInserted ?? mapped.Interactions.Count;
         var warnings = result?.Warnings.Count ?? mapped.Warnings.Count;
-        return SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        return _securityAudit.RecordAsync(
             AuthSecurityEventTypes.DataImported,
             success,
             resource: "access",

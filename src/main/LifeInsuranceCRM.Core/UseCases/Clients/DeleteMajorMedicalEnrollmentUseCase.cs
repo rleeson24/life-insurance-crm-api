@@ -19,20 +19,20 @@ public sealed class DeleteMajorMedicalEnrollmentUseCase : IDeleteMajorMedicalEnr
     private readonly INowProvider _nowProvider;
     private readonly IMajorMedicalEnrollmentRepository _majorMedicalEnrollmentRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public DeleteMajorMedicalEnrollmentUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IMajorMedicalEnrollmentRepository majorMedicalEnrollmentRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _majorMedicalEnrollmentRepository = majorMedicalEnrollmentRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteMajorMedicalEnrollmentRequest> request)
@@ -74,8 +74,7 @@ public sealed class DeleteMajorMedicalEnrollmentUseCase : IDeleteMajorMedicalEnr
         ProcessRequest<DeleteMajorMedicalEnrollmentRequest> request,
         bool success,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.EnrollmentDeleted,
             success,
             resource: "major-medical",

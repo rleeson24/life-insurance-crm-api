@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -34,7 +35,7 @@ public class GetMailingListReportUseCaseTests : UseCaseTestBase<GetMailingListRe
             ActorTracker.Object,
             ReportRepository.Object,
             new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
-            NullAuthSecurityEventRecorder.Instance);
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public abstract class ViewerSuccess_Setup : GetMailingListReportUseCaseTests, IAsyncLifetime
     {

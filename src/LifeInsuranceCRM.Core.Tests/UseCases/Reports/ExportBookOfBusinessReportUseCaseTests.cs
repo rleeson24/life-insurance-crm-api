@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -36,7 +37,7 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
             ActorTracker.Object,
             GetBookOfBusinessReportUseCase.Object,
             new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
-            AuthSecurityEventRecorder.Object);
+            new SecurityAudit(AuthSecurityEventRecorder.Object));
 
     public sealed class Success_Setup : ExportBookOfBusinessReportUseCaseTests, IAsyncLifetime
     {

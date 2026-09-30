@@ -23,7 +23,7 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
     private readonly IOrganizationUserRepository _organizationUserRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly IOrganizationUserInputValidator _organizationUserInputValidator;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public UpdateOrganizationUserUseCase(
         IActorTracker actorTracker,
@@ -31,14 +31,14 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
         IOrganizationUserRepository organizationUserRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
         IOrganizationUserInputValidator organizationUserInputValidator,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _organizationUserRepository = organizationUserRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _organizationUserInputValidator = organizationUserInputValidator;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<OrganizationUserDto>> Execute(
@@ -194,8 +194,7 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
         int httpStatus,
         string? detail,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.OrganizationUserChanged,
             success,
             resource: "organization-users",

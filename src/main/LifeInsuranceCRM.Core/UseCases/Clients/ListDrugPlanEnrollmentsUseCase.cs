@@ -22,7 +22,7 @@ public sealed class ListDrugPlanEnrollmentsUseCase : IListDrugPlanEnrollmentsUse
     private readonly IDrugPlanEnrollmentRepository _drugPlanEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListDrugPlanEnrollmentsUseCase(
         IActorTracker actorTracker,
@@ -30,14 +30,14 @@ public sealed class ListDrugPlanEnrollmentsUseCase : IListDrugPlanEnrollmentsUse
         IDrugPlanEnrollmentRepository drugPlanEnrollmentRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _drugPlanEnrollmentRepository = drugPlanEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<IReadOnlyList<DrugPlanEnrollmentDto>>> Execute(
@@ -74,8 +74,7 @@ public sealed class ListDrugPlanEnrollmentsUseCase : IListDrugPlanEnrollmentsUse
         int resultCount,
         int httpStatus,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.EnrollmentListed,
             success,
             resource: "drug",

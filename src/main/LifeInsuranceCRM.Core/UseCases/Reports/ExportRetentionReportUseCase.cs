@@ -20,18 +20,18 @@ public sealed class ExportRetentionReportUseCase : IExportRetentionReportUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IGetRetentionReportUseCase _getRetentionReportUseCase;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ExportRetentionReportUseCase(
         IActorTracker actorTracker,
         IGetRetentionReportUseCase getRetentionReportUseCase,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _getRetentionReportUseCase = getRetentionReportUseCase;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<RetentionReportDto>> Execute(
@@ -43,7 +43,7 @@ public sealed class ExportRetentionReportUseCase : IExportRetentionReportUseCase
             await RecordExportAsync(
                 request.CancellationToken,
                 success: false,
-                httpStatus: SecurityAudit.FromStatus(validation.Status),
+                httpStatus: _securityAudit.FromStatus(validation.Status),
                 failureReason: validation.Status == UseCaseStatus.Forbidden
                     ? "Export requires administrator role"
                     : "Authentication required");
@@ -56,7 +56,7 @@ public sealed class ExportRetentionReportUseCase : IExportRetentionReportUseCase
             await RecordExportAsync(
                 request.CancellationToken,
                 success: false,
-                httpStatus: SecurityAudit.FromStatus(report.Status),
+                httpStatus: _securityAudit.FromStatus(report.Status),
                 failureReason: "Report query failed");
             return report;
         }
@@ -75,8 +75,7 @@ public sealed class ExportRetentionReportUseCase : IExportRetentionReportUseCase
         int httpStatus,
         int? resultCount = null,
         string? failureReason = null) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ReportExported,
             success,
             Resource,

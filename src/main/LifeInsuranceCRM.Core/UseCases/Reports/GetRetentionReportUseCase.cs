@@ -21,18 +21,18 @@ public sealed class GetRetentionReportUseCase : IGetRetentionReportUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IReportRepository _reportRepository;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public GetRetentionReportUseCase(
         IActorTracker actorTracker,
         IReportRepository reportRepository,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _reportRepository = reportRepository;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<RetentionReportDto>> Execute(
@@ -48,8 +48,7 @@ public sealed class GetRetentionReportUseCase : IGetRetentionReportUseCase
         var rows = await _reportRepository.ListRetentionAsync(request.CancellationToken);
         if (recordView)
         {
-            await SecurityAudit.RecordAsync(
-                _authSecurityEventRecorder,
+            await _securityAudit.RecordAsync(
                 AuthSecurityEventTypes.ReportViewed,
                 success: true,
                 resource: "retention",

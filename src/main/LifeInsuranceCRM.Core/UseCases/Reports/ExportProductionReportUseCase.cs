@@ -18,18 +18,18 @@ public sealed class ExportProductionReportUseCase : IExportProductionReportUseCa
     private readonly IActorTracker _actorTracker;
     private readonly IGetProductionReportUseCase _getProductionReportUseCase;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ExportProductionReportUseCase(
         IActorTracker actorTracker,
         IGetProductionReportUseCase getProductionReportUseCase,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _getProductionReportUseCase = getProductionReportUseCase;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ProductionReportDto>> Execute(
@@ -45,7 +45,7 @@ public sealed class ExportProductionReportUseCase : IExportProductionReportUseCa
                 resource,
                 detail,
                 success: false,
-                httpStatus: SecurityAudit.FromStatus(validation.Status),
+                httpStatus: _securityAudit.FromStatus(validation.Status),
                 failureReason: validation.Status == UseCaseStatus.Forbidden
                     ? "Export requires administrator role"
                     : "Authentication required");
@@ -60,7 +60,7 @@ public sealed class ExportProductionReportUseCase : IExportProductionReportUseCa
                 resource,
                 detail,
                 success: false,
-                httpStatus: SecurityAudit.FromStatus(report.Status),
+                httpStatus: _securityAudit.FromStatus(report.Status),
                 failureReason: report.Status == UseCaseStatus.InvalidRequest
                     ? "Invalid plan year"
                     : "Report query failed");
@@ -86,8 +86,7 @@ public sealed class ExportProductionReportUseCase : IExportProductionReportUseCa
         int httpStatus,
         int? resultCount = null,
         string? failureReason = null) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ReportExported,
             success,
             resource,

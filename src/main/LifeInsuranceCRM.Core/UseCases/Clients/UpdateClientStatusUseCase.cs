@@ -22,7 +22,7 @@ public sealed class UpdateClientStatusUseCase : IUpdateClientStatusUseCase
     private readonly IClientRepository _clientRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public UpdateClientStatusUseCase(
         IActorTracker actorTracker,
@@ -30,14 +30,14 @@ public sealed class UpdateClientStatusUseCase : IUpdateClientStatusUseCase
         IClientRepository clientRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientRepository = clientRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ClientDto>> Execute(ProcessRequest<UpdateClientStatusModel> request)
@@ -75,8 +75,7 @@ public sealed class UpdateClientStatusUseCase : IUpdateClientStatusUseCase
         int httpStatus,
         string? detail,
         string? failureReason) =>
-        SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ClientUpdated,
             success,
             resource: "clients",

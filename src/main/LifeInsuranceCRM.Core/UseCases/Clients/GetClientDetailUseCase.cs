@@ -25,7 +25,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
     private readonly ISecondaryEnrollmentRepository _secondaryEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public GetClientDetailUseCase(
         IActorTracker actorTracker,
@@ -36,7 +36,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         ISecondaryEnrollmentRepository secondaryEnrollmentRepository,
         IClientMapper clientMapper,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
@@ -46,7 +46,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         _secondaryEnrollmentRepository = secondaryEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ClientDetailDto>> Execute(ProcessRequest<GetClientDetailRequest> request)
@@ -71,8 +71,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         var client = await clientTask;
         if (client is null)
         {
-            await SecurityAudit.RecordAsync(
-                _authSecurityEventRecorder,
+            await _securityAudit.RecordAsync(
                 AuthSecurityEventTypes.ClientDetailViewed,
                 success: false,
                 resource: "clients",
@@ -96,8 +95,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
             SecondaryEnrollments = (await secondaryTask).Select(_clientMapper.ToDto).ToList(),
         };
 
-        await SecurityAudit.RecordAsync(
-            _authSecurityEventRecorder,
+        await _securityAudit.RecordAsync(
             AuthSecurityEventTypes.ClientDetailViewed,
             success: true,
             resource: "clients",
