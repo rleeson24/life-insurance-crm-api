@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -18,17 +19,20 @@ public sealed class DeleteClientUseCase : IDeleteClientUseCase
     private readonly INowProvider _nowProvider;
     private readonly IClientRepository _clientRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
 
     public DeleteClientUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IClientRepository clientRepository,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        IAuthSecurityEventRecorder authSecurityEventRecorder)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientRepository = clientRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _authSecurityEventRecorder = authSecurityEventRecorder;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteClientRequest> request)
@@ -47,12 +51,30 @@ public sealed class DeleteClientUseCase : IDeleteClientUseCase
 
         if (!deleted)
         {
+            await RecordDeleteAsync(request, success: false, SecurityAudit.StatusNotFound, "Client not found");
             return ProcessResponse<bool>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Client not found",
                 ClientErrorCodes.ClientNotFound);
         }
 
+        await RecordDeleteAsync(request, success: true, SecurityAudit.StatusNoContent, failureReason: null);
         return ProcessResponse<bool>.Succeeded(true);
     }
+
+    private Task RecordDeleteAsync(
+        ProcessRequest<DeleteClientRequest> request,
+        bool success,
+        int httpStatus,
+        string? failureReason) =>
+        SecurityAudit.RecordAsync(
+            _authSecurityEventRecorder,
+            AuthSecurityEventTypes.ClientDeleted,
+            success,
+            resource: "clients",
+            request.CancellationToken,
+            httpStatus,
+            resultCount: success ? 1 : 0,
+            targetId: request.Payload.ClientId,
+            failureReason: failureReason);
 }

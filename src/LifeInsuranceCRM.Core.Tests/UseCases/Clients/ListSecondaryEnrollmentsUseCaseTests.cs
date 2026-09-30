@@ -38,7 +38,8 @@ public class ListSecondaryEnrollmentsUseCaseTests : UseCaseTestBase<ListSecondar
             ClientRepository.Object,
             SecondaryEnrollmentRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : ListSecondaryEnrollmentsUseCaseTests, IAsyncLifetime
     {

@@ -18,6 +18,18 @@ internal static class SqlReaderExtensions
     public static int GetInt32(this SqlDataReader reader, string name) =>
         reader.GetInt32(reader.GetOrdinal(name));
 
+    public static short? GetNullableInt16(this SqlDataReader reader, string name)
+    {
+        var ordinal = reader.GetOrdinal(name);
+        return reader.IsDBNull(ordinal) ? null : reader.GetInt16(ordinal);
+    }
+
+    public static int? GetNullableInt32(this SqlDataReader reader, string name)
+    {
+        var ordinal = reader.GetOrdinal(name);
+        return reader.IsDBNull(ordinal) ? null : reader.GetInt32(ordinal);
+    }
+
     public static string? GetNullableString(this SqlDataReader reader, string name)
     {
         var ordinal = reader.GetOrdinal(name);

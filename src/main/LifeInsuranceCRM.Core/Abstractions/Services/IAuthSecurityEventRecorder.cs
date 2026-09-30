@@ -7,5 +7,9 @@ public interface IAuthSecurityEventRecorder
         bool success,
         string? failureReason = null,
         string? resource = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        int? httpStatus = null,
+        int? resultCount = null,
+        Guid? targetId = null,
+        string? detail = null);
 }

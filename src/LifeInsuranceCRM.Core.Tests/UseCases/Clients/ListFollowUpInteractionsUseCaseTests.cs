@@ -33,7 +33,11 @@ public class ListFollowUpInteractionsUseCaseTests : UseCaseTestBase<ListFollowUp
     }
 
     protected override ListFollowUpInteractionsUseCase BuildSubject() =>
-        new(ActorTracker.Object, ClientInteractionRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            ClientInteractionRepository.Object,
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : ListFollowUpInteractionsUseCaseTests, IAsyncLifetime
     {

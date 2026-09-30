@@ -45,7 +45,8 @@ public class ExportMailingListReportUseCaseTests : UseCaseTestBase<ExportMailing
             ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.Admin);
             GetMailingListReportUseCase
                 .Setup(u => u.Execute(It.Is<ProcessRequest<GetMailingListReportRequest>>(
-                    r => r.Payload == _request && r.CancellationToken == _ct)))
+                    r => r.Payload == _request && r.CancellationToken == _ct),
+                    false))
                 .ReturnsAsync(ProcessResponse<MailingListReportDto>.Succeeded(_report));
             AuthSecurityEventRecorder
                 .Setup(r => r.RecordAsync(
@@ -53,7 +54,11 @@ public class ExportMailingListReportUseCaseTests : UseCaseTestBase<ExportMailing
                     true,
                     null,
                     "mailing",
-                    _ct))
+                    _ct,
+                    200,
+                    _report.Items.Count,
+                    null,
+                    null))
                 .Returns(Task.CompletedTask);
         }
 
@@ -97,7 +102,11 @@ public class ExportMailingListReportUseCaseTests : UseCaseTestBase<ExportMailing
                     true,
                     null,
                     "mailing",
-                    _fixture._ct),
+                    _fixture._ct,
+                    200,
+                    _fixture._report.Items.Count,
+                    null,
+                    null),
                 Times.Once);
         }
     }
@@ -113,7 +122,11 @@ public class ExportMailingListReportUseCaseTests : UseCaseTestBase<ExportMailing
                     false,
                     "Export requires administrator role",
                     "mailing",
-                    _ct))
+                    _ct,
+                    403,
+                    null,
+                    null,
+                    null))
                 .Returns(Task.CompletedTask);
         }
 
@@ -152,7 +165,7 @@ public class ExportMailingListReportUseCaseTests : UseCaseTestBase<ExportMailing
         public void ViewUseCase_IsNotCalled()
         {
             _fixture.GetMailingListReportUseCase.Verify(
-                u => u.Execute(It.IsAny<ProcessRequest<GetMailingListReportRequest>>()),
+                u => u.Execute(It.IsAny<ProcessRequest<GetMailingListReportRequest>>(), It.IsAny<bool>()),
                 Times.Never);
         }
     }

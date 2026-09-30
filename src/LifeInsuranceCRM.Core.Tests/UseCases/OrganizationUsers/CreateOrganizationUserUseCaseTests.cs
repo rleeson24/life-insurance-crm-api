@@ -62,7 +62,8 @@ public class CreateOrganizationUserUseCaseTests : UseCaseTestBase<CreateOrganiza
             OrganizationUserRepository.Object,
             TenantRepository.Object,
             new ClientUseCaseHelpers(),
-            new OrganizationUserInputValidator());
+            new OrganizationUserInputValidator(),
+            NullAuthSecurityEventRecorder.Instance);
 
     [Fact]
     public async Task Execute_WhenValid_InsertsIntoActorTenant()

@@ -40,7 +40,12 @@ public class DeleteMajorMedicalEnrollmentUseCaseTests : UseCaseTestBase<DeleteMa
     }
 
     protected override DeleteMajorMedicalEnrollmentUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, MajorMedicalEnrollmentRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            MajorMedicalEnrollmentRepository.Object,
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : DeleteMajorMedicalEnrollmentUseCaseTests, IAsyncLifetime
     {

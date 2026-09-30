@@ -7,7 +7,7 @@
 
 ## Applying live scripts
 
-Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`013` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
+Canonical runner: [`apply-live-schema.ps1`](apply-live-schema.ps1). It applies `001`–`014` in the same order as Aspire `LiveSchemaScripts`. Scripts are idempotent.
 
 **Azure SQL** (private-endpoint server; uses your Entra login and briefly opens public access):
 

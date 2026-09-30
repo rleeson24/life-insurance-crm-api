@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -18,17 +19,20 @@ public sealed class DeleteClientInteractionUseCase : IDeleteClientInteractionUse
     private readonly INowProvider _nowProvider;
     private readonly IClientInteractionRepository _clientInteractionRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
 
     public DeleteClientInteractionUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IClientInteractionRepository clientInteractionRepository,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        IAuthSecurityEventRecorder authSecurityEventRecorder)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientInteractionRepository = clientInteractionRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _authSecurityEventRecorder = authSecurityEventRecorder;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteClientInteractionRequest> request)
@@ -55,12 +59,30 @@ public sealed class DeleteClientInteractionUseCase : IDeleteClientInteractionUse
 
         if (!deleted)
         {
+            await RecordDeleteAsync(request, success: false, "Interaction not found");
             return ProcessResponse<bool>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Interaction not found",
                 ClientErrorCodes.InteractionNotFound);
         }
 
+        await RecordDeleteAsync(request, success: true, failureReason: null);
         return ProcessResponse<bool>.Succeeded(true);
     }
+
+    private Task RecordDeleteAsync(
+        ProcessRequest<DeleteClientInteractionRequest> request,
+        bool success,
+        string? failureReason) =>
+        SecurityAudit.RecordAsync(
+            _authSecurityEventRecorder,
+            AuthSecurityEventTypes.InteractionDeleted,
+            success,
+            resource: "interactions",
+            request.CancellationToken,
+            success ? SecurityAudit.StatusNoContent : SecurityAudit.StatusNotFound,
+            resultCount: success ? 1 : 0,
+            targetId: request.Payload.ClientInteractionId,
+            detail: SecurityEventDetail.ClientId(request.Payload.ClientId),
+            failureReason: failureReason);
 }

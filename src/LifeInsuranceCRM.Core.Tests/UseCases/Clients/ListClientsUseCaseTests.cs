@@ -1,5 +1,6 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
@@ -30,7 +31,7 @@ public class ListClientsUseCaseTests : UseCaseTestBase<ListClientsUseCase>
     }
 
     protected override ListClientsUseCase BuildSubject() =>
-        new(ActorTracker.Object, ClientRepository.Object, new ClientUseCaseHelpers());
+        new(ActorTracker.Object, ClientRepository.Object, new ClientUseCaseHelpers(), NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : ListClientsUseCaseTests, IAsyncLifetime
     {
@@ -111,5 +112,56 @@ public class ListClientsUseCaseTests : UseCaseTestBase<ListClientsUseCase>
             var response = (ProcessResponse<ListClientsResult>)_fixture.Result!;
             Assert.Equal(ClientErrorCodes.ActorNotAuthenticated, response.ErrorCode);
         }
+    }
+
+    [Fact]
+    public async Task Execute_WhenClientsListed_RecordsPageCountsWithoutSearchText()
+    {
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId);
+        var listed = new ListClientsResult
+        {
+            Items = [new ClientSummaryDto { ClientId = CreateGuid(), LastName = "Lee" }],
+            TotalCount = 40,
+            Page = 2,
+            PageSize = 25,
+        };
+        var searchRequest = new ListClientsRequest { Search = "Pat Lee", Page = 2, PageSize = 25 };
+        ClientRepository
+            .Setup(r => r.ListAsync(searchRequest, _ct))
+            .ReturnsAsync(listed);
+        var recorder = new Mock<IAuthSecurityEventRecorder>();
+        recorder
+            .Setup(r => r.RecordAsync(
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<int?>(),
+                It.IsAny<int?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+        var subject = new ListClientsUseCase(
+            ActorTracker.Object,
+            ClientRepository.Object,
+            new ClientUseCaseHelpers(),
+            recorder.Object);
+
+        var response = await subject.Execute(ProcessRequest<ListClientsRequest>.From(searchRequest, _ct));
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
+        recorder.Verify(
+            r => r.RecordAsync(
+                AuthSecurityEventTypes.ClientListed,
+                true,
+                null,
+                "clients",
+                _ct,
+                200,
+                1,
+                null,
+                "page=2;pageSize=25;total=40"),
+            Times.Once);
     }
 }

@@ -44,7 +44,8 @@ public class ExportRetentionReportUseCaseTests : UseCaseTestBase<ExportRetention
             ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.Admin);
             GetRetentionReportUseCase
                 .Setup(u => u.Execute(It.Is<ProcessRequest<GetRetentionReportRequest>>(
-                    r => r.Payload == _request && r.CancellationToken == _ct)))
+                    r => r.Payload == _request && r.CancellationToken == _ct),
+                    false))
                 .ReturnsAsync(ProcessResponse<RetentionReportDto>.Succeeded(_report));
             AuthSecurityEventRecorder
                 .Setup(r => r.RecordAsync(
@@ -52,7 +53,11 @@ public class ExportRetentionReportUseCaseTests : UseCaseTestBase<ExportRetention
                     true,
                     null,
                     "retention",
-                    _ct))
+                    _ct,
+                    200,
+                    _report.Rows.Count,
+                    null,
+                    null))
                 .Returns(Task.CompletedTask);
         }
 
@@ -89,7 +94,11 @@ public class ExportRetentionReportUseCaseTests : UseCaseTestBase<ExportRetention
                     true,
                     null,
                     "retention",
-                    _fixture._ct),
+                    _fixture._ct,
+                    200,
+                    _fixture._report.Rows.Count,
+                    null,
+                    null),
                 Times.Once);
         }
     }

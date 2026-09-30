@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace LifeInsuranceCRM.API.RateLimiting;
@@ -53,7 +54,8 @@ public static class RateLimitingExtensions
                         AuthSecurityEventTypes.RateLimitExceeded,
                         success: false,
                         failureReason: "Rate limit exceeded",
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken,
+                        httpStatus: SecurityAudit.StatusTooManyRequests);
                 }
             };
 

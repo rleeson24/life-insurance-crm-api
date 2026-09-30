@@ -30,7 +30,11 @@ public class GetBookOfBusinessReportUseCaseTests : UseCaseTestBase<GetBookOfBusi
     }
 
     protected override GetBookOfBusinessReportUseCase BuildSubject() =>
-        new(ActorTracker.Object, ReportRepository.Object, new ReportUseCaseHelpers(new ClientUseCaseHelpers()));
+        new(
+            ActorTracker.Object,
+            ReportRepository.Object,
+            new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
+            NullAuthSecurityEventRecorder.Instance);
 
     public abstract class ViewerSuccess_Setup : GetBookOfBusinessReportUseCaseTests, IAsyncLifetime
     {

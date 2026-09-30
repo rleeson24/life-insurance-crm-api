@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Reports;
@@ -39,34 +40,48 @@ public sealed class ExportBookOfBusinessReportUseCase : IExportBookOfBusinessRep
         var validation = _reportUseCaseHelpers.ValidateExporter(_actorTracker);
         if (validation.IsFailed(out ProcessResponse<BookOfBusinessReportDto> failure))
         {
-            await _authSecurityEventRecorder.RecordAsync(
-                AuthSecurityEventTypes.ReportExported,
+            await RecordExportAsync(
+                request.CancellationToken,
                 success: false,
+                httpStatus: SecurityAudit.FromStatus(validation.Status),
                 failureReason: validation.Status == UseCaseStatus.Forbidden
                     ? "Export requires administrator role"
-                    : "Authentication required",
-                resource: Resource,
-                cancellationToken: request.CancellationToken);
+                    : "Authentication required");
             return failure;
         }
 
-        var report = await _getBookOfBusinessReportUseCase.Execute(request);
+        var report = await _getBookOfBusinessReportUseCase.Execute(request, recordView: false);
         if (!report.IsSuccess)
         {
-            await _authSecurityEventRecorder.RecordAsync(
-                AuthSecurityEventTypes.ReportExported,
+            await RecordExportAsync(
+                request.CancellationToken,
                 success: false,
-                failureReason: "Report query failed",
-                resource: Resource,
-                cancellationToken: request.CancellationToken);
+                httpStatus: SecurityAudit.FromStatus(report.Status),
+                failureReason: "Report query failed");
             return report;
         }
 
-        await _authSecurityEventRecorder.RecordAsync(
-            AuthSecurityEventTypes.ReportExported,
+        await RecordExportAsync(
+            request.CancellationToken,
             success: true,
-            resource: Resource,
-            cancellationToken: request.CancellationToken);
+            httpStatus: SecurityAudit.StatusOk,
+            resultCount: report.Result!.Items.Count);
         return report;
     }
+
+    private Task RecordExportAsync(
+        CancellationToken cancellationToken,
+        bool success,
+        int httpStatus,
+        int? resultCount = null,
+        string? failureReason = null) =>
+        SecurityAudit.RecordAsync(
+            _authSecurityEventRecorder,
+            AuthSecurityEventTypes.ReportExported,
+            success,
+            Resource,
+            cancellationToken,
+            httpStatus,
+            resultCount,
+            failureReason: failureReason);
 }

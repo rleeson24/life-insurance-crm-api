@@ -35,7 +35,11 @@ public class GetProductionReportUseCaseTests : UseCaseTestBase<GetProductionRepo
     }
 
     protected override GetProductionReportUseCase BuildSubject() =>
-        new(ActorTracker.Object, ReportRepository.Object, new ReportUseCaseHelpers(new ClientUseCaseHelpers()));
+        new(
+            ActorTracker.Object,
+            ReportRepository.Object,
+            new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : GetProductionReportUseCaseTests, IAsyncLifetime
     {

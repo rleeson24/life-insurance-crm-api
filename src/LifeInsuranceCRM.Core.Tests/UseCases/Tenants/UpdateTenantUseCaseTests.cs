@@ -53,7 +53,8 @@ public class UpdateTenantUseCaseTests : UseCaseTestBase<UpdateTenantUseCase>
             NowProvider.Object,
             TenantRepository.Object,
             new ClientUseCaseHelpers(),
-            new TenantInputValidator());
+            new TenantInputValidator(),
+            NullAuthSecurityEventRecorder.Instance);
 
     [Fact]
     public async Task Execute_WhenMissing_ReturnsNotFound()

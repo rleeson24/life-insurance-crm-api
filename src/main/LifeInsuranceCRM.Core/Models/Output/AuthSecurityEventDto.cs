@@ -30,4 +30,12 @@ public sealed class AuthSecurityEventDto
     public string? CorrelationId { get; init; }
 
     public string? Resource { get; init; }
+
+    public int? HttpStatus { get; init; }
+
+    public int? ResultCount { get; init; }
+
+    public Guid? TargetId { get; init; }
+
+    public string? Detail { get; init; }
 }

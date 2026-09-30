@@ -38,7 +38,8 @@ public class ListClientInteractionsUseCaseTests : UseCaseTestBase<ListClientInte
             ClientRepository.Object,
             ClientInteractionRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : ListClientInteractionsUseCaseTests, IAsyncLifetime
     {

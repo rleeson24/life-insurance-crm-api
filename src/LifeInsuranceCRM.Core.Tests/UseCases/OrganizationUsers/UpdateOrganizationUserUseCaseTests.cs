@@ -60,7 +60,8 @@ public class UpdateOrganizationUserUseCaseTests : UseCaseTestBase<UpdateOrganiza
             NowProvider.Object,
             OrganizationUserRepository.Object,
             new ClientUseCaseHelpers(),
-            new OrganizationUserInputValidator());
+            new OrganizationUserInputValidator(),
+            NullAuthSecurityEventRecorder.Instance);
 
     [Fact]
     public async Task Execute_WhenDemotingLastAdmin_ReturnsInvalidRequest()

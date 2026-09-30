@@ -40,7 +40,12 @@ public class DeleteSecondaryEnrollmentUseCaseTests : UseCaseTestBase<DeleteSecon
     }
 
     protected override DeleteSecondaryEnrollmentUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, SecondaryEnrollmentRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            SecondaryEnrollmentRepository.Object,
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : DeleteSecondaryEnrollmentUseCaseTests, IAsyncLifetime
     {

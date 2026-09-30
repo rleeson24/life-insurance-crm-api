@@ -9,6 +9,7 @@ using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.UseCases.Imports;
 using LifeInsuranceCRM.Tests.Utilities;
+using Microsoft.AspNetCore.Http;
 using LifeInsuranceCRM.Utilities;
 using Moq;
 
@@ -43,7 +44,9 @@ public class ImportAccessDatabaseUseCaseTests : UseCaseTestBase<ImportAccessData
             NowProvider.Object,
             Mapper.Object,
             Repository.Object,
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance,
+            new HttpContextAccessor());
 
     [Fact]
     public async Task Execute_WhenUnauthenticated_ReturnsUnauthorized()

@@ -44,7 +44,8 @@ public class GetClientDetailUseCaseTests : UseCaseTestBase<GetClientDetailUseCas
             DrugPlanEnrollmentRepository.Object,
             SecondaryEnrollmentRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : GetClientDetailUseCaseTests, IAsyncLifetime
     {

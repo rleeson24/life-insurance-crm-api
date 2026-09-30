@@ -38,7 +38,8 @@ public class ListDrugPlanEnrollmentsUseCaseTests : UseCaseTestBase<ListDrugPlanE
             ClientRepository.Object,
             DrugPlanEnrollmentRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : ListDrugPlanEnrollmentsUseCaseTests, IAsyncLifetime
     {

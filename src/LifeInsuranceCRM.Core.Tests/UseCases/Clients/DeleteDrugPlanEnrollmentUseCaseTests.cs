@@ -40,7 +40,12 @@ public class DeleteDrugPlanEnrollmentUseCaseTests : UseCaseTestBase<DeleteDrugPl
     }
 
     protected override DeleteDrugPlanEnrollmentUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, DrugPlanEnrollmentRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            DrugPlanEnrollmentRepository.Object,
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : DeleteDrugPlanEnrollmentUseCaseTests, IAsyncLifetime
     {

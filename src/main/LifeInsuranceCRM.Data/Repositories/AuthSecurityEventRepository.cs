@@ -11,16 +11,18 @@ public sealed class AuthSecurityEventRepository : IAuthSecurityEventRepository
     private const string InsertSql = """
         INSERT INTO dbo.AuthSecurityEvents (
             AuthSecurityEventId, TenantId, OccurredAt, EventType, UserId, UserEmail,
-            Success, FailureReason, IpAddress, UserAgent, CorrelationId, Resource)
+            Success, FailureReason, IpAddress, UserAgent, CorrelationId, Resource,
+            HttpStatus, ResultCount, TargetId, Detail)
         VALUES (
             @AuthSecurityEventId, @TenantId, @OccurredAt, @EventType, @UserId, @UserEmail,
-            @Success, @FailureReason, @IpAddress, @UserAgent, @CorrelationId, @Resource);
+            @Success, @FailureReason, @IpAddress, @UserAgent, @CorrelationId, @Resource,
+            @HttpStatus, @ResultCount, @TargetId, @Detail);
         """;
 
     private const string EventSelectColumns = """
         e.AuthSecurityEventId, e.TenantId, t.Name AS TenantName, e.OccurredAt, e.EventType,
         e.UserId, e.UserEmail, e.Success, e.FailureReason, e.IpAddress, e.UserAgent,
-        e.CorrelationId, e.Resource
+        e.CorrelationId, e.Resource, e.HttpStatus, e.ResultCount, e.TargetId, e.Detail
         """;
 
     private const string FilteredFromSql = """
@@ -32,6 +34,8 @@ public sealed class AuthSecurityEventRepository : IAuthSecurityEventRepository
                OR e.FailureReason LIKE @Search
                OR e.Resource LIKE @Search
                OR e.IpAddress LIKE @Search
+               OR e.Detail LIKE @Search
+               OR CONVERT(varchar(36), e.TargetId) LIKE @Search
                OR t.Name LIKE @Search)
           AND (@EventType IS NULL OR e.EventType = @EventType)
           AND (@Success IS NULL OR e.Success = @Success)
@@ -59,7 +63,11 @@ public sealed class AuthSecurityEventRepository : IAuthSecurityEventRepository
             new SqlParameter("@IpAddress", (object?)securityEvent.IpAddress ?? DBNull.Value),
             new SqlParameter("@UserAgent", (object?)securityEvent.UserAgent ?? DBNull.Value),
             new SqlParameter("@CorrelationId", (object?)securityEvent.CorrelationId ?? DBNull.Value),
-            new SqlParameter("@Resource", (object?)securityEvent.Resource ?? DBNull.Value));
+            new SqlParameter("@Resource", (object?)securityEvent.Resource ?? DBNull.Value),
+            new SqlParameter("@HttpStatus", (object?)securityEvent.HttpStatus ?? DBNull.Value),
+            new SqlParameter("@ResultCount", (object?)securityEvent.ResultCount ?? DBNull.Value),
+            new SqlParameter("@TargetId", (object?)securityEvent.TargetId ?? DBNull.Value),
+            new SqlParameter("@Detail", (object?)securityEvent.Detail ?? DBNull.Value));
 
     public async Task<ListAuthSecurityEventsResult> ListAsync(
         ListAuthSecurityEventsRequest request,
@@ -167,5 +175,9 @@ public sealed class AuthSecurityEventRepository : IAuthSecurityEventRepository
         UserAgent = reader.GetNullableString("UserAgent"),
         CorrelationId = reader.GetNullableString("CorrelationId"),
         Resource = reader.GetNullableString("Resource"),
+        HttpStatus = reader.GetNullableInt16("HttpStatus"),
+        ResultCount = reader.GetNullableInt32("ResultCount"),
+        TargetId = reader.GetNullableGuid("TargetId"),
+        Detail = reader.GetNullableString("Detail"),
     };
 }

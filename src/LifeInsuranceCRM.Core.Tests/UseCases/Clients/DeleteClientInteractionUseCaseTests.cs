@@ -40,7 +40,12 @@ public class DeleteClientInteractionUseCaseTests : UseCaseTestBase<DeleteClientI
     }
 
     protected override DeleteClientInteractionUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, ClientInteractionRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            ClientInteractionRepository.Object,
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : DeleteClientInteractionUseCaseTests, IAsyncLifetime
     {

@@ -38,7 +38,8 @@ public class ListMajorMedicalEnrollmentsUseCaseTests : UseCaseTestBase<ListMajor
             ClientRepository.Object,
             MajorMedicalEnrollmentRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : ListMajorMedicalEnrollmentsUseCaseTests, IAsyncLifetime
     {

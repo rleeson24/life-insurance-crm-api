@@ -30,7 +30,11 @@ public class GetMailingListReportUseCaseTests : UseCaseTestBase<GetMailingListRe
     }
 
     protected override GetMailingListReportUseCase BuildSubject() =>
-        new(ActorTracker.Object, ReportRepository.Object, new ReportUseCaseHelpers(new ClientUseCaseHelpers()));
+        new(
+            ActorTracker.Object,
+            ReportRepository.Object,
+            new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
+            NullAuthSecurityEventRecorder.Instance);
 
     public abstract class ViewerSuccess_Setup : GetMailingListReportUseCaseTests, IAsyncLifetime
     {
