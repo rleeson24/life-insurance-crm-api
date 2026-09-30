@@ -1,4 +1,6 @@
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Entities;
+using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Services;
 
 namespace LifeInsuranceCRM.Core.Tests.Services;
@@ -49,6 +51,31 @@ public class SecurityEventDetailTests
             outcome: "inserted");
 
         Assert.Equal("clients=2;majorMedical=1;drug=0;secondary=0;interactions=3;warnings=1;outcome=inserted", detail);
+    }
+
+    [Fact]
+    public void ClientUpdate_NamesChangedFieldsWithoutValues()
+    {
+        var before = new Client
+        {
+            FirstName = "Pat",
+            LastName = "Lee",
+            MedicareNumber = "1EG4-TE5-MK72",
+            IsActive = true,
+        };
+        var after = new UpdateClientModel
+        {
+            FirstName = "Patrick",
+            LastName = "Lee",
+            MedicareNumber = "1EG4-TE5-MK73",
+            IsActive = false,
+        };
+
+        var detail = SecurityEventDetail.ClientUpdate(before, after);
+
+        Assert.Equal("fields=firstName,medicareNumber,isActive=true->false", detail);
+        Assert.DoesNotContain("Patrick", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("1EG4", detail, StringComparison.Ordinal);
     }
 
     [Fact]

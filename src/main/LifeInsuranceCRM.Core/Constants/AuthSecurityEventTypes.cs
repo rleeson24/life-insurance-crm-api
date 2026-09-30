@@ -21,6 +21,7 @@ public static class AuthSecurityEventTypes
     public const string InteractionListed = "InteractionListed";
     public const string FollowUpsListed = "FollowUpsListed";
     public const string DataImported = "DataImported";
+    public const string ClientUpdated = "ClientUpdated";
     public const string ClientDeleted = "ClientDeleted";
     public const string EnrollmentDeleted = "EnrollmentDeleted";
     public const string InteractionDeleted = "InteractionDeleted";

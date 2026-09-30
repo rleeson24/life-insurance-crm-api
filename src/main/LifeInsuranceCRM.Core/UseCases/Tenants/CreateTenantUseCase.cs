@@ -1,8 +1,10 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
@@ -21,19 +23,22 @@ public sealed class CreateTenantUseCase : ICreateTenantUseCase
     private readonly ITenantRepository _tenantRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly ITenantInputValidator _tenantInputValidator;
+    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
 
     public CreateTenantUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         ITenantRepository tenantRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        ITenantInputValidator tenantInputValidator)
+        ITenantInputValidator tenantInputValidator,
+        IAuthSecurityEventRecorder authSecurityEventRecorder)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _tenantRepository = tenantRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _tenantInputValidator = tenantInputValidator;
+        _authSecurityEventRecorder = authSecurityEventRecorder;
     }
 
     public async Task<ProcessResponse<TenantDto>> Execute(ProcessRequest<CreateTenantModel> request)
@@ -56,6 +61,15 @@ public sealed class CreateTenantUseCase : ICreateTenantUseCase
             audit,
             request.CancellationToken);
 
+        await SecurityAudit.RecordAsync(
+            _authSecurityEventRecorder,
+            AuthSecurityEventTypes.TenantChanged,
+            success: true,
+            resource: "tenants",
+            request.CancellationToken,
+            httpStatus: SecurityAudit.StatusCreated,
+            targetId: created.TenantId,
+            detail: SecurityEventDetail.CreatedTenant(created.IsActive));
         return ProcessResponse<TenantDto>.Succeeded(created);
     }
 }

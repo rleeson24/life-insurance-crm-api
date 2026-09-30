@@ -37,7 +37,13 @@ public class UpdateClientStatusUseCaseTests : UseCaseTestBase<UpdateClientStatus
     }
 
     protected override UpdateClientStatusUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            ClientRepository.Object,
+            new ClientMapper(),
+            new ClientUseCaseHelpers(),
+            NullAuthSecurityEventRecorder.Instance);
 
     public sealed class Success_Setup : UpdateClientStatusUseCaseTests, IAsyncLifetime
     {
