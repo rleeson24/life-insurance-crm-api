@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -155,7 +156,8 @@ public sealed class ActorResolutionMiddleware
             eventType,
             success: false,
             failureReason: failureReason,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken,
+            httpStatus: SecurityAudit.StatusForbidden);
 
         var problem = problemDetailsFactory.Create(
             context,

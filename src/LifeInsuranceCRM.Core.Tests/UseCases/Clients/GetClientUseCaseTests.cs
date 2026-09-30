@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Output;
@@ -32,7 +33,12 @@ public class GetClientUseCaseTests : UseCaseTestBase<GetClientUseCase>
     }
 
     protected override GetClientUseCase BuildSubject() =>
-        new(ActorTracker.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            ClientRepository.Object,
+            new ClientMapper(),
+            new ClientUseCaseHelpers(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public sealed class NotFound_Setup : GetClientUseCaseTests, IAsyncLifetime
     {

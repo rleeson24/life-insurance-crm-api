@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Tests.Utilities;
 using LifeInsuranceCRM.Utilities;
 using Moq;
@@ -33,7 +34,11 @@ public class ListFollowUpInteractionsUseCaseTests : UseCaseTestBase<ListFollowUp
     }
 
     protected override ListFollowUpInteractionsUseCase BuildSubject() =>
-        new(ActorTracker.Object, ClientInteractionRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            ClientInteractionRepository.Object,
+            new ClientUseCaseHelpers(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public sealed class Success_Setup : ListFollowUpInteractionsUseCaseTests, IAsyncLifetime
     {

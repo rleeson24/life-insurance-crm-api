@@ -55,6 +55,7 @@ app.Run();
 void AddConfigurationOptions(WebApplicationBuilder webBuilder)
 {
     webBuilder.Services.Configure<AuthOptions>(webBuilder.Configuration.GetSection(AuthOptions.SectionName));
+    webBuilder.Services.Configure<ClientIpOptions>(webBuilder.Configuration.GetSection(ClientIpOptions.SectionName));
     webBuilder.Services.Configure<CorsOptions>(webBuilder.Configuration.GetSection(CorsOptions.SectionName));
     webBuilder.Services.Configure<RateLimitingOptions>(webBuilder.Configuration.GetSection(RateLimitingOptions.SectionName));
     webBuilder.Services.Configure<KeyVaultOptions>(webBuilder.Configuration.GetSection(KeyVaultOptions.SectionName));
@@ -141,6 +142,17 @@ void AddAuthentication(WebApplicationBuilder webBuilder)
         webBuilder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
         {
             options.MapInboundClaims = false;
+            options.Events ??= new JwtBearerEvents();
+            var previousOnAuthenticationFailed = options.Events.OnAuthenticationFailed;
+            options.Events.OnAuthenticationFailed = async context =>
+            {
+                if (previousOnAuthenticationFailed is not null)
+                {
+                    await previousOnAuthenticationFailed(context);
+                }
+
+                await JwtAuthenticationFailure.RecordAsync(context);
+            };
         });
     }
 

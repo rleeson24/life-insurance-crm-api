@@ -1,5 +1,7 @@
+using LifeInsuranceCRM.API.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 
 namespace LifeInsuranceCRM.API.Middleware;
 
@@ -20,7 +22,8 @@ public sealed class AuthChallengeRecordingMiddleware
     {
         await _next(context);
 
-        if (context.Response.StatusCode == StatusCodes.Status401Unauthorized)
+        if (context.Response.StatusCode == StatusCodes.Status401Unauthorized
+            && !context.Items.ContainsKey(JwtAuthenticationFailure.RecordedItemKey))
         {
             _logger.LogWarning(
                 "Unauthorized request {HttpMethod} {Path}",
@@ -31,7 +34,8 @@ public sealed class AuthChallengeRecordingMiddleware
                 AuthSecurityEventTypes.Unauthorized,
                 success: false,
                 failureReason: "Unauthorized",
-                cancellationToken: context.RequestAborted);
+                cancellationToken: context.RequestAborted,
+                httpStatus: SecurityAudit.StatusUnauthorized);
         }
         else if (context.Response.StatusCode == StatusCodes.Status403Forbidden
                  && !context.Items.ContainsKey("TenantAccessDeniedRecorded"))
@@ -45,7 +49,8 @@ public sealed class AuthChallengeRecordingMiddleware
                 AuthSecurityEventTypes.Forbidden,
                 success: false,
                 failureReason: "Forbidden",
-                cancellationToken: context.RequestAborted);
+                cancellationToken: context.RequestAborted,
+                httpStatus: SecurityAudit.StatusForbidden);
         }
     }
 }

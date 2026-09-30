@@ -2,6 +2,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Import;
@@ -9,6 +10,7 @@ using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.UseCases.Imports;
 using LifeInsuranceCRM.Tests.Utilities;
+using Microsoft.AspNetCore.Http;
 using LifeInsuranceCRM.Utilities;
 using Moq;
 
@@ -43,7 +45,9 @@ public class ImportAccessDatabaseUseCaseTests : UseCaseTestBase<ImportAccessData
             NowProvider.Object,
             Mapper.Object,
             Repository.Object,
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance),
+            new HttpContextAccessor());
 
     [Fact]
     public async Task Execute_WhenUnauthenticated_ReturnsUnauthorized()

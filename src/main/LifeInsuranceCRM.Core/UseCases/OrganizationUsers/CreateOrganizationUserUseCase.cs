@@ -4,6 +4,7 @@ using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
@@ -23,6 +24,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
     private readonly ITenantRepository _tenantRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly IOrganizationUserInputValidator _organizationUserInputValidator;
+    private readonly ISecurityAudit _securityAudit;
 
     public CreateOrganizationUserUseCase(
         IActorTracker actorTracker,
@@ -30,7 +32,8 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
         IOrganizationUserRepository organizationUserRepository,
         ITenantRepository tenantRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IOrganizationUserInputValidator organizationUserInputValidator)
+        IOrganizationUserInputValidator organizationUserInputValidator,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
@@ -38,6 +41,7 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
         _tenantRepository = tenantRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _organizationUserInputValidator = organizationUserInputValidator;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<OrganizationUserDto>> Execute(
@@ -83,6 +87,14 @@ public sealed class CreateOrganizationUserUseCase : ICreateOrganizationUserUseCa
             audit,
             request.CancellationToken);
 
+        await _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.OrganizationUserChanged,
+            success: true,
+            resource: "organization-users",
+            cancellationToken: request.CancellationToken,
+            httpStatus: SecurityAudit.StatusCreated,
+            targetId: created.OrganizationUserId,
+            detail: SecurityEventDetail.CreatedAccess(created.Role, created.IsActive));
         return ProcessResponse<OrganizationUserDto>.Succeeded(created);
     }
 

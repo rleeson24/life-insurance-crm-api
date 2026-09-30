@@ -4,6 +4,7 @@ using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.Validation;
 using LifeInsuranceCRM.Utilities;
@@ -22,19 +23,22 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
     private readonly IOrganizationUserRepository _organizationUserRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
     private readonly IOrganizationUserInputValidator _organizationUserInputValidator;
+    private readonly ISecurityAudit _securityAudit;
 
     public UpdateOrganizationUserUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IOrganizationUserRepository organizationUserRepository,
         IClientUseCaseHelpers clientUseCaseHelpers,
-        IOrganizationUserInputValidator organizationUserInputValidator)
+        IOrganizationUserInputValidator organizationUserInputValidator,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _organizationUserRepository = organizationUserRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
         _organizationUserInputValidator = organizationUserInputValidator;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<OrganizationUserDto>> Execute(
@@ -59,6 +63,12 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
             request.CancellationToken);
         if (!CanManageUser(existing))
         {
+            await RecordChangeAsync(
+                request,
+                success: false,
+                httpStatus: SecurityAudit.StatusNotFound,
+                detail: null,
+                failureReason: "Organization user not found");
             return ProcessResponse<OrganizationUserDto>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Organization user not found",
@@ -68,6 +78,16 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
         if (OrganizationRoles.IsSuperAdmin(request.Payload.Role)
             && !OrganizationRoles.IsSuperAdmin(existing!.Role))
         {
+            await RecordChangeAsync(
+                request,
+                success: false,
+                httpStatus: SecurityAudit.StatusBadRequest,
+                detail: SecurityEventDetail.AccessChange(
+                    existing.Role,
+                    request.Payload.Role,
+                    existing.IsActive,
+                    request.Payload.IsActive),
+                failureReason: "SuperAdmin cannot be assigned");
             return ProcessResponse<OrganizationUserDto>.InvalidRequestResponse(
                 "SuperAdmin cannot be assigned in the app",
                 OrganizationUserErrorCodes.RoleInvalid);
@@ -76,6 +96,16 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
         if (OrganizationRoles.IsSuperAdmin(existing!.Role)
             && !OrganizationRoles.IsSuperAdmin(request.Payload.Role))
         {
+            await RecordChangeAsync(
+                request,
+                success: false,
+                httpStatus: SecurityAudit.StatusBadRequest,
+                detail: SecurityEventDetail.AccessChange(
+                    existing.Role,
+                    request.Payload.Role,
+                    existing.IsActive,
+                    request.Payload.IsActive),
+                failureReason: "SuperAdmin role is locked");
             return ProcessResponse<OrganizationUserDto>.InvalidRequestResponse(
                 "SuperAdmin role cannot be changed in the app",
                 OrganizationUserErrorCodes.SuperAdminRoleLocked);
@@ -92,6 +122,16 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
             request.CancellationToken);
         if (lastAdminBlocked.IsFailed(out ProcessResponse<OrganizationUserDto> lastAdminFailure))
         {
+            await RecordChangeAsync(
+                request,
+                success: false,
+                httpStatus: SecurityAudit.StatusBadRequest,
+                detail: SecurityEventDetail.AccessChange(
+                    existing.Role,
+                    role,
+                    existing.IsActive,
+                    request.Payload.IsActive),
+                failureReason: "Last administrator");
             return lastAdminFailure;
         }
 
@@ -101,6 +141,16 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
             request.CancellationToken);
         if (lastSuperAdminBlocked.IsFailed(out ProcessResponse<OrganizationUserDto> lastSuperAdminFailure))
         {
+            await RecordChangeAsync(
+                request,
+                success: false,
+                httpStatus: SecurityAudit.StatusBadRequest,
+                detail: SecurityEventDetail.AccessChange(
+                    existing.Role,
+                    role,
+                    existing.IsActive,
+                    request.Payload.IsActive),
+                failureReason: "Last SuperAdmin");
             return lastSuperAdminFailure;
         }
 
@@ -114,13 +164,45 @@ public sealed class UpdateOrganizationUserUseCase : IUpdateOrganizationUserUseCa
             audit,
             request.CancellationToken);
 
-        return updated is null
-            ? ProcessResponse<OrganizationUserDto>.WithStatus(
+        if (updated is null)
+        {
+            await RecordChangeAsync(
+                request,
+                success: false,
+                httpStatus: SecurityAudit.StatusNotFound,
+                detail: null,
+                failureReason: "Organization user not found");
+            return ProcessResponse<OrganizationUserDto>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Organization user not found",
-                OrganizationUserErrorCodes.UserNotFound)
-            : ProcessResponse<OrganizationUserDto>.Succeeded(updated);
+                OrganizationUserErrorCodes.UserNotFound);
+        }
+
+        await RecordChangeAsync(
+            request,
+            success: true,
+            httpStatus: SecurityAudit.StatusOk,
+            detail: SecurityEventDetail.AccessChange(existing.Role, role, existing.IsActive, request.Payload.IsActive)
+                ?? "profile=updated",
+            failureReason: null);
+        return ProcessResponse<OrganizationUserDto>.Succeeded(updated);
     }
+
+    private Task RecordChangeAsync(
+        ProcessRequest<UpdateOrganizationUserModel> request,
+        bool success,
+        int httpStatus,
+        string? detail,
+        string? failureReason) =>
+        _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.OrganizationUserChanged,
+            success,
+            resource: "organization-users",
+            request.CancellationToken,
+            httpStatus,
+            targetId: request.Payload.OrganizationUserId,
+            detail: detail,
+            failureReason: failureReason);
 
     private bool CanManageUser(OrganizationUserDto? existing)
     {

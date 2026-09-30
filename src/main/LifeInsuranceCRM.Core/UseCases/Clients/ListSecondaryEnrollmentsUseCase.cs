@@ -1,9 +1,11 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -20,19 +22,22 @@ public sealed class ListSecondaryEnrollmentsUseCase : IListSecondaryEnrollmentsU
     private readonly ISecondaryEnrollmentRepository _secondaryEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListSecondaryEnrollmentsUseCase(
         IActorTracker actorTracker,
         IClientRepository clientRepository,
         ISecondaryEnrollmentRepository secondaryEnrollmentRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
         _secondaryEnrollmentRepository = secondaryEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<IReadOnlyList<SecondaryEnrollmentDto>>> Execute(
@@ -47,6 +52,7 @@ public sealed class ListSecondaryEnrollmentsUseCase : IListSecondaryEnrollmentsU
         var client = await _clientRepository.GetByIdAsync(request.Payload.ClientId, request.CancellationToken);
         if (client is null)
         {
+            await RecordListAsync(request, success: false, resultCount: 0, SecurityAudit.StatusNotFound, "Client not found");
             return ProcessResponse<IReadOnlyList<SecondaryEnrollmentDto>>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Client not found",
@@ -58,6 +64,23 @@ public sealed class ListSecondaryEnrollmentsUseCase : IListSecondaryEnrollmentsU
             request.CancellationToken);
 
         var result = enrollments.Select(_clientMapper.ToDto).ToList();
+        await RecordListAsync(request, success: true, result.Count, SecurityAudit.StatusOk, failureReason: null);
         return ProcessResponse<IReadOnlyList<SecondaryEnrollmentDto>>.Succeeded(result);
     }
+
+    private Task RecordListAsync(
+        ProcessRequest<ListSecondaryEnrollmentsRequest> request,
+        bool success,
+        int resultCount,
+        int httpStatus,
+        string? failureReason) =>
+        _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.EnrollmentListed,
+            success,
+            resource: "secondary",
+            request.CancellationToken,
+            httpStatus,
+            resultCount,
+            request.Payload.ClientId,
+            failureReason: failureReason);
 }

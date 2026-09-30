@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -36,7 +37,7 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
             ActorTracker.Object,
             GetBookOfBusinessReportUseCase.Object,
             new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
-            AuthSecurityEventRecorder.Object);
+            new SecurityAudit(AuthSecurityEventRecorder.Object));
 
     public sealed class Success_Setup : ExportBookOfBusinessReportUseCaseTests, IAsyncLifetime
     {
@@ -45,7 +46,8 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
             ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.Admin);
             GetBookOfBusinessReportUseCase
                 .Setup(u => u.Execute(It.Is<ProcessRequest<GetBookOfBusinessReportRequest>>(
-                    r => r.Payload == _request && r.CancellationToken == _ct)))
+                    r => r.Payload == _request && r.CancellationToken == _ct),
+                    false))
                 .ReturnsAsync(ProcessResponse<BookOfBusinessReportDto>.Succeeded(_report));
             AuthSecurityEventRecorder
                 .Setup(r => r.RecordAsync(
@@ -53,7 +55,11 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
                     true,
                     null,
                     "book",
-                    _ct))
+                    _ct,
+                    200,
+                    _report.Items.Count,
+                    null,
+                    null))
                 .Returns(Task.CompletedTask);
         }
 
@@ -97,7 +103,11 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
                     true,
                     null,
                     "book",
-                    _fixture._ct),
+                    _fixture._ct,
+                    200,
+                    _fixture._report.Items.Count,
+                    null,
+                    null),
                 Times.Once);
         }
     }
@@ -113,7 +123,11 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
                     false,
                     "Export requires administrator role",
                     "book",
-                    _ct))
+                    _ct,
+                    403,
+                    null,
+                    null,
+                    null))
                 .Returns(Task.CompletedTask);
         }
 
@@ -152,7 +166,7 @@ public class ExportBookOfBusinessReportUseCaseTests : UseCaseTestBase<ExportBook
         public void ViewUseCase_IsNotCalled()
         {
             _fixture.GetBookOfBusinessReportUseCase.Verify(
-                u => u.Execute(It.IsAny<ProcessRequest<GetBookOfBusinessReportRequest>>()),
+                u => u.Execute(It.IsAny<ProcessRequest<GetBookOfBusinessReportRequest>>(), It.IsAny<bool>()),
                 Times.Never);
         }
     }

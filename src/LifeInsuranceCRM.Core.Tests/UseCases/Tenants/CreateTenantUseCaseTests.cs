@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.UseCases.Clients;
 using LifeInsuranceCRM.Core.UseCases.Tenants;
 using LifeInsuranceCRM.Core.Validation;
@@ -49,7 +50,8 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
             NowProvider.Object,
             TenantRepository.Object,
             new ClientUseCaseHelpers(),
-            new TenantInputValidator());
+            new TenantInputValidator(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     [Fact]
     public async Task Execute_WhenAdmin_ReturnsForbidden()
@@ -75,5 +77,63 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
 
         Assert.Equal(UseCaseStatus.Success, response.Status);
         Assert.Equal(_createdTenant.TenantId, response.Result!.TenantId);
+    }
+
+    [Fact]
+    public async Task Execute_WhenSuperAdmin_RecordsCreatedOrganizationWithoutName()
+    {
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
+        NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        TenantRepository
+            .Setup(r => r.InsertAsync("North Agency", It.IsAny<AuditStamp>(), _ct))
+            .ReturnsAsync(_createdTenant);
+        var recorder = new Mock<IAuthSecurityEventRecorder>();
+        recorder
+            .Setup(r => r.RecordAsync(
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<int?>(),
+                It.IsAny<int?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+        var subject = new CreateTenantUseCase(
+            ActorTracker.Object,
+            NowProvider.Object,
+            TenantRepository.Object,
+            new ClientUseCaseHelpers(),
+            new TenantInputValidator(),
+            new SecurityAudit(recorder.Object));
+
+        var response = await subject.Execute(ProcessRequest<CreateTenantModel>.From(_inputModel, _ct));
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
+        recorder.Verify(
+            r => r.RecordAsync(
+                AuthSecurityEventTypes.TenantChanged,
+                true,
+                null,
+                "tenants",
+                _ct,
+                SecurityAudit.StatusCreated,
+                null,
+                _createdTenant.TenantId,
+                "created;isActive=true"),
+            Times.Once);
+        recorder.Verify(
+            r => r.RecordAsync(
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<int?>(),
+                It.IsAny<int?>(),
+                It.IsAny<Guid?>(),
+                It.Is<string?>(detail => detail != null && detail.Contains("North Agency"))),
+            Times.Never);
     }
 }

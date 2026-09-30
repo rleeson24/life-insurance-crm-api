@@ -1,7 +1,10 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -16,15 +19,18 @@ public sealed class ListFollowUpInteractionsUseCase : IListFollowUpInteractionsU
     private readonly IActorTracker _actorTracker;
     private readonly IClientInteractionRepository _clientInteractionRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISecurityAudit _securityAudit;
 
     public ListFollowUpInteractionsUseCase(
         IActorTracker actorTracker,
         IClientInteractionRepository clientInteractionRepository,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientInteractionRepository = clientInteractionRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<IReadOnlyList<FollowUpInteractionDto>>> Execute(
@@ -37,6 +43,13 @@ public sealed class ListFollowUpInteractionsUseCase : IListFollowUpInteractionsU
         }
 
         var interactions = await _clientInteractionRepository.ListFollowUpsAsync(request.CancellationToken);
+        await _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.FollowUpsListed,
+            success: true,
+            resource: "follow-ups",
+            cancellationToken: request.CancellationToken,
+            httpStatus: SecurityAudit.StatusOk,
+            resultCount: interactions.Count);
         return ProcessResponse<IReadOnlyList<FollowUpInteractionDto>>.Succeeded(interactions);
     }
 }

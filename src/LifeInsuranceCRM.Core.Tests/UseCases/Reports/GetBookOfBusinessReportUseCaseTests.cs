@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -30,7 +31,11 @@ public class GetBookOfBusinessReportUseCaseTests : UseCaseTestBase<GetBookOfBusi
     }
 
     protected override GetBookOfBusinessReportUseCase BuildSubject() =>
-        new(ActorTracker.Object, ReportRepository.Object, new ReportUseCaseHelpers(new ClientUseCaseHelpers()));
+        new(
+            ActorTracker.Object,
+            ReportRepository.Object,
+            new ReportUseCaseHelpers(new ClientUseCaseHelpers()),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public abstract class ViewerSuccess_Setup : GetBookOfBusinessReportUseCaseTests, IAsyncLifetime
     {

@@ -5,6 +5,7 @@ using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Input;
 using LifeInsuranceCRM.Core.Models.Output;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -21,19 +22,22 @@ public sealed class UpdateClientStatusUseCase : IUpdateClientStatusUseCase
     private readonly IClientRepository _clientRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISecurityAudit _securityAudit;
 
     public UpdateClientStatusUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IClientRepository clientRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _clientRepository = clientRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ClientDto>> Execute(ProcessRequest<UpdateClientStatusModel> request)
@@ -44,16 +48,41 @@ public sealed class UpdateClientStatusUseCase : IUpdateClientStatusUseCase
             return failure;
         }
 
+        var before = await _clientRepository.GetByIdAsync(request.Payload.ClientId, request.CancellationToken);
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);
         var client = await _clientRepository.UpdateStatusAsync(request.Payload, audit, request.CancellationToken);
         if (client is null)
         {
+            await RecordUpdateAsync(request, success: false, SecurityAudit.StatusNotFound, detail: null, "Client not found");
             return ProcessResponse<ClientDto>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Client not found",
                 ClientErrorCodes.ClientNotFound);
         }
 
+        await RecordUpdateAsync(
+            request,
+            success: true,
+            SecurityAudit.StatusOk,
+            SecurityEventDetail.ClientStatus(before, request.Payload),
+            failureReason: null);
         return ProcessResponse<ClientDto>.Succeeded(_clientMapper.ToDto(client));
     }
+
+    private Task RecordUpdateAsync(
+        ProcessRequest<UpdateClientStatusModel> request,
+        bool success,
+        int httpStatus,
+        string? detail,
+        string? failureReason) =>
+        _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.ClientUpdated,
+            success,
+            resource: "clients",
+            request.CancellationToken,
+            httpStatus,
+            resultCount: success ? 1 : 0,
+            targetId: request.Payload.ClientId,
+            detail: detail,
+            failureReason: failureReason);
 }

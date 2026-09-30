@@ -21,6 +21,7 @@ internal static class LiveSchemaScripts
         "011_PlanNameLists.sql",
         "012_ClientFieldEncryption.sql",
         "013_BypassTenantFilter.sql",
+        "014_AuthSecurityEventDetails.sql",
         "seed/001_DevelopmentTenant.sql",
     ];
 

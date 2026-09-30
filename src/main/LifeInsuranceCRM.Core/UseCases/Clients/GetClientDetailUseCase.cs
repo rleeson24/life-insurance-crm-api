@@ -1,9 +1,11 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
+using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -23,6 +25,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
     private readonly ISecondaryEnrollmentRepository _secondaryEnrollmentRepository;
     private readonly IClientMapper _clientMapper;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISecurityAudit _securityAudit;
 
     public GetClientDetailUseCase(
         IActorTracker actorTracker,
@@ -32,7 +35,8 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         IDrugPlanEnrollmentRepository drugPlanEnrollmentRepository,
         ISecondaryEnrollmentRepository secondaryEnrollmentRepository,
         IClientMapper clientMapper,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _clientRepository = clientRepository;
@@ -42,6 +46,7 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         _secondaryEnrollmentRepository = secondaryEnrollmentRepository;
         _clientMapper = clientMapper;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<ClientDetailDto>> Execute(ProcessRequest<GetClientDetailRequest> request)
@@ -66,6 +71,15 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
         var client = await clientTask;
         if (client is null)
         {
+            await _securityAudit.RecordAsync(
+                AuthSecurityEventTypes.ClientDetailViewed,
+                success: false,
+                resource: "clients",
+                request.CancellationToken,
+                SecurityAudit.StatusNotFound,
+                resultCount: 0,
+                targetId: clientId,
+                failureReason: "Client not found");
             return ProcessResponse<ClientDetailDto>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Client not found",
@@ -81,6 +95,19 @@ public sealed class GetClientDetailUseCase : IGetClientDetailUseCase
             SecondaryEnrollments = (await secondaryTask).Select(_clientMapper.ToDto).ToList(),
         };
 
+        await _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.ClientDetailViewed,
+            success: true,
+            resource: "clients",
+            request.CancellationToken,
+            SecurityAudit.StatusOk,
+            resultCount: 1,
+            targetId: clientId,
+            detail: SecurityEventDetail.ClientParts(
+                detail.Interactions.Count,
+                detail.MajorMedicalEnrollments.Count,
+                detail.DrugPlanEnrollments.Count,
+                detail.SecondaryEnrollments.Count));
         return ProcessResponse<ClientDetailDto>.Succeeded(detail);
     }
 }

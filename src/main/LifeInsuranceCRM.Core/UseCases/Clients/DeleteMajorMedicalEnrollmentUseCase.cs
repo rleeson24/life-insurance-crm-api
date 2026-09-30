@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Clients;
@@ -18,17 +19,20 @@ public sealed class DeleteMajorMedicalEnrollmentUseCase : IDeleteMajorMedicalEnr
     private readonly INowProvider _nowProvider;
     private readonly IMajorMedicalEnrollmentRepository _majorMedicalEnrollmentRepository;
     private readonly IClientUseCaseHelpers _clientUseCaseHelpers;
+    private readonly ISecurityAudit _securityAudit;
 
     public DeleteMajorMedicalEnrollmentUseCase(
         IActorTracker actorTracker,
         INowProvider nowProvider,
         IMajorMedicalEnrollmentRepository majorMedicalEnrollmentRepository,
-        IClientUseCaseHelpers clientUseCaseHelpers)
+        IClientUseCaseHelpers clientUseCaseHelpers,
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _nowProvider = nowProvider;
         _majorMedicalEnrollmentRepository = majorMedicalEnrollmentRepository;
         _clientUseCaseHelpers = clientUseCaseHelpers;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<bool>> Execute(ProcessRequest<DeleteMajorMedicalEnrollmentRequest> request)
@@ -55,12 +59,29 @@ public sealed class DeleteMajorMedicalEnrollmentUseCase : IDeleteMajorMedicalEnr
 
         if (!deleted)
         {
+            await RecordDeleteAsync(request, success: false, "Major Medical enrollment not found");
             return ProcessResponse<bool>.WithStatus(
                 UseCaseStatus.NotFound,
                 "Major Medical enrollment not found",
                 ClientErrorCodes.MajorMedicalEnrollmentNotFound);
         }
 
+        await RecordDeleteAsync(request, success: true, failureReason: null);
         return ProcessResponse<bool>.Succeeded(true);
     }
+
+    private Task RecordDeleteAsync(
+        ProcessRequest<DeleteMajorMedicalEnrollmentRequest> request,
+        bool success,
+        string? failureReason) =>
+        _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.EnrollmentDeleted,
+            success,
+            resource: "major-medical",
+            request.CancellationToken,
+            success ? SecurityAudit.StatusNoContent : SecurityAudit.StatusNotFound,
+            resultCount: success ? 1 : 0,
+            targetId: request.Payload.MajorMedicalEnrollmentId,
+            detail: SecurityEventDetail.ClientId(request.Payload.ClientId),
+            failureReason: failureReason);
 }

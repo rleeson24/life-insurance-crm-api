@@ -2,6 +2,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Models;
 using LifeInsuranceCRM.Core.Models.Requests;
 using LifeInsuranceCRM.Core.UseCases.Clients;
@@ -40,7 +41,12 @@ public class DeleteMajorMedicalEnrollmentUseCaseTests : UseCaseTestBase<DeleteMa
     }
 
     protected override DeleteMajorMedicalEnrollmentUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, MajorMedicalEnrollmentRepository.Object, new ClientUseCaseHelpers());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            MajorMedicalEnrollmentRepository.Object,
+            new ClientUseCaseHelpers(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public sealed class Success_Setup : DeleteMajorMedicalEnrollmentUseCaseTests, IAsyncLifetime
     {

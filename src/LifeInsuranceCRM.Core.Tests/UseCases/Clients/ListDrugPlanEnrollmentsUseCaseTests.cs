@@ -1,6 +1,7 @@
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models.Output;
@@ -38,7 +39,8 @@ public class ListDrugPlanEnrollmentsUseCaseTests : UseCaseTestBase<ListDrugPlanE
             ClientRepository.Object,
             DrugPlanEnrollmentRepository.Object,
             new ClientMapper(),
-            new ClientUseCaseHelpers());
+            new ClientUseCaseHelpers(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public sealed class Success_Setup : ListDrugPlanEnrollmentsUseCaseTests, IAsyncLifetime
     {

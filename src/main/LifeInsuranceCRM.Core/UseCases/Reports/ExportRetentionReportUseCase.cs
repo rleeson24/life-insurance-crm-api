@@ -3,6 +3,7 @@ using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
 using LifeInsuranceCRM.Core.Models.Output;
 using LifeInsuranceCRM.Core.Models.Requests;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Utilities;
 
 namespace LifeInsuranceCRM.Core.UseCases.Reports;
@@ -19,18 +20,18 @@ public sealed class ExportRetentionReportUseCase : IExportRetentionReportUseCase
     private readonly IActorTracker _actorTracker;
     private readonly IGetRetentionReportUseCase _getRetentionReportUseCase;
     private readonly IReportUseCaseHelpers _reportUseCaseHelpers;
-    private readonly IAuthSecurityEventRecorder _authSecurityEventRecorder;
+    private readonly ISecurityAudit _securityAudit;
 
     public ExportRetentionReportUseCase(
         IActorTracker actorTracker,
         IGetRetentionReportUseCase getRetentionReportUseCase,
         IReportUseCaseHelpers reportUseCaseHelpers,
-        IAuthSecurityEventRecorder authSecurityEventRecorder)
+        ISecurityAudit securityAudit)
     {
         _actorTracker = actorTracker;
         _getRetentionReportUseCase = getRetentionReportUseCase;
         _reportUseCaseHelpers = reportUseCaseHelpers;
-        _authSecurityEventRecorder = authSecurityEventRecorder;
+        _securityAudit = securityAudit;
     }
 
     public async Task<ProcessResponse<RetentionReportDto>> Execute(
@@ -39,34 +40,47 @@ public sealed class ExportRetentionReportUseCase : IExportRetentionReportUseCase
         var validation = _reportUseCaseHelpers.ValidateExporter(_actorTracker);
         if (validation.IsFailed(out ProcessResponse<RetentionReportDto> failure))
         {
-            await _authSecurityEventRecorder.RecordAsync(
-                AuthSecurityEventTypes.ReportExported,
+            await RecordExportAsync(
+                request.CancellationToken,
                 success: false,
+                httpStatus: _securityAudit.FromStatus(validation.Status),
                 failureReason: validation.Status == UseCaseStatus.Forbidden
                     ? "Export requires administrator role"
-                    : "Authentication required",
-                resource: Resource,
-                cancellationToken: request.CancellationToken);
+                    : "Authentication required");
             return failure;
         }
 
-        var report = await _getRetentionReportUseCase.Execute(request);
+        var report = await _getRetentionReportUseCase.Execute(request, recordView: false);
         if (!report.IsSuccess)
         {
-            await _authSecurityEventRecorder.RecordAsync(
-                AuthSecurityEventTypes.ReportExported,
+            await RecordExportAsync(
+                request.CancellationToken,
                 success: false,
-                failureReason: "Report query failed",
-                resource: Resource,
-                cancellationToken: request.CancellationToken);
+                httpStatus: _securityAudit.FromStatus(report.Status),
+                failureReason: "Report query failed");
             return report;
         }
 
-        await _authSecurityEventRecorder.RecordAsync(
-            AuthSecurityEventTypes.ReportExported,
+        await RecordExportAsync(
+            request.CancellationToken,
             success: true,
-            resource: Resource,
-            cancellationToken: request.CancellationToken);
+            httpStatus: SecurityAudit.StatusOk,
+            resultCount: report.Result!.Rows.Count);
         return report;
     }
+
+    private Task RecordExportAsync(
+        CancellationToken cancellationToken,
+        bool success,
+        int httpStatus,
+        int? resultCount = null,
+        string? failureReason = null) =>
+        _securityAudit.RecordAsync(
+            AuthSecurityEventTypes.ReportExported,
+            success,
+            Resource,
+            cancellationToken,
+            httpStatus,
+            resultCount,
+            failureReason: failureReason);
 }

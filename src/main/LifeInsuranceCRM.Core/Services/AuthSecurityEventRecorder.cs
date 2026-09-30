@@ -2,10 +2,12 @@ using System.Diagnostics;
 using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
+using LifeInsuranceCRM.Core.Config;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace LifeInsuranceCRM.Core.Services;
 
@@ -16,19 +18,22 @@ public sealed class AuthSecurityEventRecorder : IAuthSecurityEventRecorder
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly INowProvider _nowProvider;
     private readonly ILogger<AuthSecurityEventRecorder> _logger;
+    private readonly bool _trustForwardedFor;
 
     public AuthSecurityEventRecorder(
         IAuthSecurityEventRepository repository,
         IActorTracker actorTracker,
         IHttpContextAccessor httpContextAccessor,
         INowProvider nowProvider,
-        ILogger<AuthSecurityEventRecorder> logger)
+        ILogger<AuthSecurityEventRecorder> logger,
+        IOptions<ClientIpOptions> clientIpOptions)
     {
         _repository = repository;
         _actorTracker = actorTracker;
         _httpContextAccessor = httpContextAccessor;
         _nowProvider = nowProvider;
         _logger = logger;
+        _trustForwardedFor = clientIpOptions.Value.TrustForwardedFor;
     }
 
     public async Task RecordAsync(
@@ -36,7 +41,11 @@ public sealed class AuthSecurityEventRecorder : IAuthSecurityEventRecorder
         bool success,
         string? failureReason = null,
         string? resource = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int? httpStatus = null,
+        int? resultCount = null,
+        Guid? targetId = null,
+        string? detail = null)
     {
         var httpContext = _httpContextAccessor.HttpContext;
         var correlationId = Activity.Current?.TraceId.ToString()
@@ -52,10 +61,14 @@ public sealed class AuthSecurityEventRecorder : IAuthSecurityEventRecorder
             UserEmail = _actorTracker.UserEmail,
             Success = success,
             FailureReason = Truncate(PiiRedactor.Redact(failureReason), 256),
-            IpAddress = Truncate(httpContext?.Connection.RemoteIpAddress?.ToString(), 45),
+            IpAddress = Truncate(ClientIpAddress.Resolve(httpContext, _trustForwardedFor), 45),
             UserAgent = Truncate(httpContext?.Request.Headers.UserAgent.ToString(), 512),
             CorrelationId = Truncate(correlationId, 64),
             Resource = Truncate(resource ?? httpContext?.Request.Path.Value, 256),
+            HttpStatus = httpStatus,
+            ResultCount = resultCount,
+            TargetId = targetId,
+            Detail = Truncate(PiiRedactor.Redact(detail), 512),
         };
 
         try

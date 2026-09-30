@@ -2,6 +2,7 @@ using LifeInsuranceCRM.Core.Abstractions.Auth;
 using LifeInsuranceCRM.Core.Abstractions.Data;
 using LifeInsuranceCRM.Core.Abstractions.Services;
 using LifeInsuranceCRM.Core.Constants;
+using LifeInsuranceCRM.Core.Services;
 using LifeInsuranceCRM.Core.Entities;
 using LifeInsuranceCRM.Core.Mappers;
 using LifeInsuranceCRM.Core.Models;
@@ -38,7 +39,14 @@ public class UpdateClientUseCaseTests : UseCaseTestBase<UpdateClientUseCase>
     }
 
     protected override UpdateClientUseCase BuildSubject() =>
-        new(ActorTracker.Object, NowProvider.Object, ClientRepository.Object, new ClientMapper(), new ClientUseCaseHelpers(), new ClientInputValidator());
+        new(
+            ActorTracker.Object,
+            NowProvider.Object,
+            ClientRepository.Object,
+            new ClientMapper(),
+            new ClientUseCaseHelpers(),
+            new ClientInputValidator(),
+            new SecurityAudit(NullAuthSecurityEventRecorder.Instance));
 
     public sealed class Success_Setup : UpdateClientUseCaseTests, IAsyncLifetime
     {
