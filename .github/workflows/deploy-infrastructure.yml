@@ -36,8 +36,8 @@ jobs:
       - name: Deploy Bicep
         uses: azure/arm-deploy@v2
         with:
-          type: deployment
           resourceGroupName: ${{ inputs.resourceGroup }}
+          deploymentName: main
           template: ./infra/main.bicep
           parameters: ./infra/parameters/${{ inputs.environment }}.bicepparam
           additionalArguments: >-

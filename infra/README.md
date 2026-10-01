@@ -28,6 +28,7 @@ infra/
     staticwebapp.bicep
     github-oidc.bicep
     github-client-oidc.bicep
+    github-deploy-role-assigner.bicep
     role-assignment.bicep
   parameters/
     dev.bicepparam
@@ -82,7 +83,7 @@ Default parameter files use **`centralus`**. Override at deploy time if needed:
 
 ## First-time deploy (local)
 
-The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). After that, GitHub Actions can update the same stack.
+The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). `deploy-infra.ps1` also grants that identity **Role Based Access Control Administrator** on the resource group, limited to the roles this template assigns (AcrPull, AcrPush, Key Vault, Contributor, Reader). The identity's Contributor role cannot create role assignments, and GitHub Actions cannot grant this permission to itself. Re-run `deploy-infra.ps1` once per environment before **Deploy infrastructure** in Actions.
 
 The first API revision pulls a **bootstrap image from ACR**, not from MCR. Container Apps in the VNet cannot reliably pull public MCR images, which previously ended in `Operation expired`. `deploy-infra.ps1` imports `bootstrap/aspnetapp:latest` into ACR, then creates the app. GitHub **Deploy API** replaces that image with the real API.
 
@@ -184,7 +185,7 @@ After deploying infra:
 2. Run [`scripts/grant-keyvault-secrets-officer.ps1`](../scripts/grant-keyvault-secrets-officer.ps1) so you can set vault secrets (RG Owner is not enough). Then create Entra app registrations and store `AzureAd--*` secrets. See [`docs/security/entra-policies.md`](../docs/security/entra-policies.md) and [`docs/security/azure-runtime-auth.md`](../docs/security/azure-runtime-auth.md).
 3. Deploy the API image via GitHub Actions.
 
-Infra grants the API managed identity **Key Vault Secrets User** (read), **Key Vault Crypto User** (unwrap the field-encryption DEK), and **AcrPull**. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
+Infra grants the API system identity **Key Vault Secrets User** (read) and **Key Vault Crypto User** (unwrap the field-encryption DEK). **AcrPull** is granted to the user-assigned pull identity that the Container App uses to pull from ACR. Deploy API grants AcrPull to the system identity itself when it points the registry at that identity. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
 
 Remaining follow-ups:
 

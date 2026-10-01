@@ -5,7 +5,8 @@ param enablePurgeProtection bool
 param tags object
 param privateEndpointSubnetId string
 
-@description('Entra object ID of a user or group that may list, read, and write vault secrets (data plane). Resource group Owner/Contributor does not grant this.')
+@description('Entra object ID of a user or group that may list, read, and write vault secrets (data plane). Resource group Owner/Contributor does not grant this. This is an object ID, not a secret.')
+#disable-next-line secure-secrets-in-params
 param secretsOfficerPrincipalId string = ''
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
