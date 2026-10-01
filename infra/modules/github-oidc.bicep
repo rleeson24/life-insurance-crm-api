@@ -6,6 +6,9 @@ param githubRepository string
 param githubEnvironment string
 param acrName string
 
+@description('BrokerBook GitHub Deployer custom role id. Keep in sync with infra/modules/github-deployer-role.bicep.')
+param githubDeployerRoleDefinitionId string
+
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
 }
@@ -43,11 +46,11 @@ resource federatedCredentialEnvironment 'Microsoft.ManagedIdentity/userAssignedI
   }
 }
 
-module contributorAssignment 'role-assignment.bicep' = {
-  name: 'github-contributor-${uniqueString(deployIdentity.id)}'
+module deployerAssignment 'role-assignment.bicep' = {
+  name: 'github-deployer-${uniqueString(deployIdentity.id)}'
   params: {
     principalId: deployIdentity.properties.principalId
-    roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+    roleDefinitionId: githubDeployerRoleDefinitionId
   }
 }
 

@@ -119,7 +119,66 @@ function Invoke-InfraDeployment {
     }
 }
 
+function Ensure-GitHubDeployerRole {
+    $roleName = 'BrokerBook GitHub Deployer'
+    $existing = az role definition list --name $roleName --custom-role-only true --query "[0].name" -o tsv
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not list custom role '$roleName' (exit code $LASTEXITCODE)."
+    }
+
+    Write-Host "Ensuring custom role $roleName exists on the subscription..."
+    az deployment sub create `
+        --location $Location `
+        --name brokerbook-github-deployer-role `
+        --template-file infra/modules/github-deployer-role.bicep
+    if ($LASTEXITCODE -ne 0) {
+        throw "Custom role deployment failed (exit code $LASTEXITCODE)."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($existing)) {
+        Write-Host "Waiting 2 minutes for the new custom role to propagate before it can be assigned..."
+        Start-Sleep -Seconds 120
+    }
+}
+
+function Remove-GitHubContributorAssignment {
+    # Built-in Contributor. Removed only at this resource group, after BrokerBook GitHub Deployer is assigned.
+    $contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+    $identityName = "bbcrm-$Environment-github-deploy"
+    $principalId = az identity show --name $identityName --resource-group $ResourceGroup --query principalId -o tsv
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) {
+        throw "GitHub deploy identity $identityName was not found in $ResourceGroup."
+    }
+
+    $scope = "/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroup"
+    $ids = @(az role assignment list `
+            --assignee-object-id $principalId `
+            --scope $scope `
+            --role $contributorRoleId `
+            --query "[?scope=='$scope'].id" `
+            -o tsv)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not list Contributor assignments for $identityName (exit code $LASTEXITCODE)."
+    }
+
+    $ids = @($ids | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($ids.Count -eq 0) {
+        Write-Host "No resource-group Contributor assignment to remove for $identityName."
+        return
+    }
+
+    Write-Host "Removing resource-group Contributor from $identityName..."
+    foreach ($id in $ids) {
+        az role assignment delete --ids $id
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to remove Contributor assignment $id from $identityName."
+        }
+    }
+}
+
 try {
+    Ensure-GitHubDeployerRole
+
     $apiAppName = "bbcrm-$Environment-api"
     $apiState = az containerapp show --name $apiAppName --resource-group $ResourceGroup --query properties.provisioningState -o tsv 2>$null
     if ($LASTEXITCODE -ne 0) {
@@ -158,6 +217,8 @@ try {
         'createApiContainerApp=true',
         ('containerImage=' + $bootstrapImage)
     )
+
+    Remove-GitHubContributorAssignment
 
     Write-Host ""
     Write-Host "Deployment outputs:"

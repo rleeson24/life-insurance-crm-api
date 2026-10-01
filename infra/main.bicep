@@ -109,6 +109,9 @@ param acrNameOverride string = ''
 @description('Optional override for an existing globally unique SQL server name (e.g. bbcrm-dev-sql).')
 param sqlServerNameOverride string = ''
 
+// Keep in sync with roleDefinitionId in infra/modules/github-deployer-role.bicep.
+var githubDeployerRoleDefinitionId = 'c4e8a1d6-7b32-4f90-9e15-6a0d3c8b2f47'
+
 var tags = {
   application: 'brokerbook'
   environment: environment
@@ -208,6 +211,7 @@ module githubOidc 'modules/github-oidc.bicep' = {
     githubRepository: githubRepository
     githubEnvironment: environment
     acrName: acrName
+    githubDeployerRoleDefinitionId: githubDeployerRoleDefinitionId
   }
 }
 
@@ -250,6 +254,7 @@ module githubDeployRoleAssigner 'modules/github-deploy-role-assigner.bicep' = if
   name: 'github-deploy-role-assigner-${environment}'
   params: {
     principalId: githubOidc.outputs.principalId
+    githubDeployerRoleDefinitionId: githubDeployerRoleDefinitionId
   }
 }
 

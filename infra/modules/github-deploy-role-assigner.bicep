@@ -3,12 +3,16 @@ targetScope = 'resourceGroup'
 @description('Principal ID of the GitHub deploy user-assigned identity (bbcrm-<env>-github-deploy).')
 param principalId string
 
+@description('BrokerBook GitHub Deployer custom role id. Keep in sync with infra/modules/github-deployer-role.bicep.')
+param githubDeployerRoleDefinitionId string
+
 // Role Based Access Control Administrator, constrained to the roles this stack assigns.
 // Do not put this assignment in the GitHub Actions deployment: that identity cannot grant it to itself.
 // When you add a role assignment anywhere under infra/, add its role definition ID here and re-run deploy-infra.ps1.
 var roleBasedAccessControlAdministratorRoleId = 'f58310d9-a9f6-439a-9e8d-f62e7b41a168'
 var allowedRoleDefinitionIds = [
-  'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor — GitHub deploy (resource group) and client deploy (Static Web App)
+  githubDeployerRoleDefinitionId // BrokerBook GitHub Deployer — API deploy identity on the resource group
+  'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor — client deploy identity on the Static Web App only
   '8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush — GitHub deploy identity
   '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull — API pull identity
   '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User — API

@@ -83,7 +83,7 @@ Default parameter files use **`centralus`**. Override at deploy time if needed:
 
 ## First-time deploy (local)
 
-The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). `deploy-infra.ps1` also grants that identity **Role Based Access Control Administrator** on the resource group, limited to the roles this template assigns (AcrPull, AcrPush, Key Vault, Contributor, Reader). The identity's Contributor role cannot create role assignments, and GitHub Actions cannot grant this permission to itself. Re-run `deploy-infra.ps1` once per environment before **Deploy infrastructure** in Actions.
+The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). `deploy-infra.ps1` creates the subscription custom role **BrokerBook GitHub Deployer**, assigns it to that identity on the resource group, and removes any previous **Contributor** assignment on the same group. It also grants **Role Based Access Control Administrator**, limited to the roles this template assigns (GitHub Deployer, AcrPull, AcrPush, Key Vault, Contributor for the client Static Web App, Reader). That identity cannot create role assignments by itself, and GitHub Actions cannot grant this permission to itself. Re-run `deploy-infra.ps1` once per environment before **Deploy infrastructure** in Actions. The GitHub workflow stays resource-group scoped and does not create the custom role.
 
 The first API revision pulls a **bootstrap image from ACR**, not from MCR. Container Apps in the VNet cannot reliably pull public MCR images, which previously ended in `Operation expired`. `deploy-infra.ps1` imports `bootstrap/aspnetapp:latest` into ACR, then creates the app. GitHub **Deploy API** replaces that image with the real API.
 
@@ -186,6 +186,8 @@ After deploying infra:
 3. Deploy the API image via GitHub Actions.
 
 Infra grants the API system identity **Key Vault Secrets User** (read) and **Key Vault Crypto User** (unwrap the field-encryption DEK). **AcrPull** is granted to the user-assigned pull identity that the Container App uses to pull from ACR. Deploy API grants AcrPull to the system identity itself when it points the registry at that identity. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
+
+The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource group, not Contributor. It can deploy the platform and the API, and cannot delete the SQL server or database, delete long-term retention backups, purge Key Vault, delete Log Analytics or diagnostic settings, delete resource locks, or export the database. The client GitHub identity is still Contributor on the Static Web App only.
 
 Remaining follow-ups:
 
