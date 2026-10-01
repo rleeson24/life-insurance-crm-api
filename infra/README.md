@@ -194,6 +194,8 @@ The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource grou
 
 A local prod run of `deploy-infra.ps1` sends the subscription **Administrative** activity log to the prod Log Analytics workspace and puts **CanNotDelete** locks on the SQL server, Key Vault, and that workspace. The GitHub workflow does not do those two steps. High-risk activity in the resource group emails `securityAlertEmail` from [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Leave that empty to skip the alerts. Dev does not get locks or alerts.
 
+Suspected compromise: [docs/security/incident-response.md](../docs/security/incident-response.md).
+
 Remaining follow-ups:
 
 - Optional CMK for SQL TDE
