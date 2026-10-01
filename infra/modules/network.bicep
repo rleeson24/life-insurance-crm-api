@@ -43,7 +43,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-01-01' = {
 }
 
 resource sqlPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.${environment().suffixes.sqlServerHostname}'
+  name: 'privatelink${environment().suffixes.sqlServerHostname}'
   location: 'global'
   tags: tags
 }
