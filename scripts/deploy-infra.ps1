@@ -110,7 +110,8 @@ function Invoke-InfraDeployment {
         '--resource-group', $ResourceGroup,
         '--template-file', 'infra/main.bicep',
         '--parameters', $paramsPath,
-        '--parameters', $passwordOverride
+        '--parameters', $passwordOverride,
+        '--parameters', 'grantDeployerRoleAssignment=true'
     ) + $ExtraParameters
     & az @azArgs
     if ($LASTEXITCODE -ne 0) {

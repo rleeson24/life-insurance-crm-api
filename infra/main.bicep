@@ -54,7 +54,8 @@ param sqlAdministratorLoginPassword string
 @description('Optional Entra object ID for Azure AD SQL administrator. Leave empty to configure later.')
 param sqlAzureAdAdministratorObjectId string = ''
 
-@description('Entra object ID of the user or group that sets Key Vault secrets. Required to view/edit secrets in the portal or CLI; RG Owner is not enough.')
+@description('Entra object ID of the user or group that sets Key Vault secrets. Required to view/edit secrets in the portal or CLI; RG Owner is not enough. This is an object ID, not a secret.')
+#disable-next-line secure-secrets-in-params
 param keyVaultSecretsOfficerPrincipalId string = ''
 
 @description('Container image for the API. The deploy script imports a bootstrap image into ACR so the first revision does not pull from MCR through the VNet.')
@@ -62,6 +63,9 @@ param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
 @description('When false, skip the API Container App so ACR and the pull identity can be created first.')
 param createApiContainerApp bool = true
+
+@description('Grant the GitHub deploy identity permission to create this template\'s role assignments. Local Owner deploys only. GitHub Actions must leave this false.')
+param grantDeployerRoleAssignment bool = false
 
 @description('Container App CPU cores as a decimal string (0.25 minimum on Consumption).')
 param containerAppCpu string = environment == 'prod' ? '0.5' : '0.25'
@@ -239,6 +243,13 @@ module containerApps 'modules/containerapps.bicep' = {
     maxReplicas: containerAppMaxReplicas
     corsAllowedOrigins: concat([staticWebApp.outputs.origin], additionalCorsOrigins)
     createApiApp: createApiContainerApp
+  }
+}
+
+module githubDeployRoleAssigner 'modules/github-deploy-role-assigner.bicep' = if (grantDeployerRoleAssignment) {
+  name: 'github-deploy-role-assigner-${environment}'
+  params: {
+    principalId: githubOidc.outputs.principalId
   }
 }
 

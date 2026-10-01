@@ -191,17 +191,6 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = if (createAp
   ]
 }
 
-// GitHub `az containerapp registry set --identity system` uses this after the app exists.
-resource acrPullForSystem 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createApiApp) {
-  name: guid(acr.id, apiContainerApp!.id, acrPullRoleDefinitionId)
-  scope: acr
-  properties: {
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalId: apiContainerApp!.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 var keyVaultSecretsUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var keyVaultCryptoUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')
 
