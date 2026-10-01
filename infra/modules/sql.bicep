@@ -142,7 +142,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
 }
 
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  name: 'privatelink.${environment().suffixes.sqlServerHostname}'
+  name: 'privatelink${environment().suffixes.sqlServerHostname}'
 }
 
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
