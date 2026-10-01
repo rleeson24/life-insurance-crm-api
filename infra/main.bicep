@@ -103,6 +103,12 @@ param enableSqlAuditing bool = environment == 'prod'
 @description('Send SQL diagnostics to Log Analytics. Disabled in dev to reduce ingestion cost.')
 param enableSqlDiagnostics bool = environment == 'prod'
 
+@description('Create production activity-log alerts. Dev stays off.')
+param enableSecurityGuardrails bool = environment == 'prod'
+
+@description('Email for high-risk activity-log alerts. Alerts are not created when this is empty.')
+param securityAlertEmail string = ''
+
 @description('Optional override for an existing globally unique ACR name (e.g. bbcrmdevacr).')
 param acrNameOverride string = ''
 
@@ -258,6 +264,14 @@ module githubDeployRoleAssigner 'modules/github-deploy-role-assigner.bicep' = if
   }
 }
 
+module guardrails 'modules/guardrails.bicep' = if (enableSecurityGuardrails && !empty(securityAlertEmail)) {
+  name: 'guardrails-${environment}'
+  params: {
+    baseName: baseName
+    securityAlertEmail: securityAlertEmail
+  }
+}
+
 module githubClientOidc 'modules/github-client-oidc.bicep' = if (createApiContainerApp) {
   name: 'github-client-oidc-${environment}'
   params: {
@@ -285,6 +299,7 @@ output githubDeployClientId string = githubOidc.outputs.clientId
 output githubClientDeployClientId string = createApiContainerApp ? githubClientOidc!.outputs.clientId : ''
 output containerAppIdentityPrincipalId string = containerApps.outputs.apiIdentityPrincipalId
 output logAnalyticsWorkspaceId string = monitor.outputs.logAnalyticsWorkspaceId
+output logAnalyticsWorkspaceName string = monitor.outputs.logAnalyticsWorkspaceName
 output staticWebAppName string = staticWebApp.outputs.name
 output clientHostname string = staticWebApp.outputs.hostname
 output clientOrigin string = staticWebApp.outputs.origin

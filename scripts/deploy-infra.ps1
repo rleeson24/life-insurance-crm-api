@@ -141,6 +141,54 @@ function Ensure-GitHubDeployerRole {
     }
 }
 
+function Enable-ProdAdminGuardrails {
+    if ($Environment -ne 'prod') {
+        return
+    }
+
+    $outputs = az deployment group show `
+        --resource-group $ResourceGroup `
+        --name main `
+        --query properties.outputs `
+        -o json | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $null -eq $outputs) {
+        throw 'Could not read deployment outputs for production guardrails.'
+    }
+
+    $workspaceId = $outputs.logAnalyticsWorkspaceId.value
+    $workspaceName = $outputs.logAnalyticsWorkspaceName.value
+    $sqlServerName = $outputs.sqlServerName.value
+    $keyVaultName = $outputs.keyVaultName.value
+
+    Write-Host "Sending Administrative activity logs to $workspaceName..."
+    $diagnosticArgs = @(
+        'deployment', 'sub', 'create',
+        '--location', $Location,
+        '--name', 'bbcrm-activity-administrative',
+        '--template-file', 'infra/modules/activity-log-diagnostics.bicep',
+        '--parameters', "logAnalyticsWorkspaceId=$workspaceId"
+    )
+    & az @diagnosticArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Activity log diagnostic setting failed (exit code $LASTEXITCODE)."
+    }
+
+    Write-Host "Applying CanNotDelete locks on SQL, Key Vault, and Log Analytics..."
+    $lockArgs = @(
+        'deployment', 'group', 'create',
+        '--resource-group', $ResourceGroup,
+        '--name', 'resource-locks',
+        '--template-file', 'infra/modules/resource-locks.bicep',
+        '--parameters', "sqlServerName=$sqlServerName",
+        '--parameters', "keyVaultName=$keyVaultName",
+        '--parameters', "logAnalyticsWorkspaceName=$workspaceName"
+    )
+    & az @lockArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Resource lock deployment failed (exit code $LASTEXITCODE)."
+    }
+}
+
 function Remove-GitHubContributorAssignment {
     # Built-in Contributor. Removed only at this resource group, after BrokerBook GitHub Deployer is assigned.
     $contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
@@ -219,6 +267,7 @@ try {
     )
 
     Remove-GitHubContributorAssignment
+    Enable-ProdAdminGuardrails
 
     Write-Host ""
     Write-Host "Deployment outputs:"

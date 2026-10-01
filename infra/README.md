@@ -30,6 +30,9 @@ infra/
     github-client-oidc.bicep
     github-deploy-role-assigner.bicep
     role-assignment.bicep
+    guardrails.bicep
+    activity-log-diagnostics.bicep
+    resource-locks.bicep
   parameters/
     dev.bicepparam
     prod.bicepparam
@@ -188,6 +191,8 @@ After deploying infra:
 Infra grants the API system identity **Key Vault Secrets User** (read) and **Key Vault Crypto User** (unwrap the field-encryption DEK). **AcrPull** is granted to the user-assigned pull identity that the Container App uses to pull from ACR. Deploy API grants AcrPull to the system identity itself when it points the registry at that identity. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
 
 The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource group, not Contributor. It can deploy the platform and the API, and cannot delete the SQL server or database, delete long-term retention backups, purge Key Vault, delete Log Analytics or diagnostic settings, delete resource locks, or export the database. The client GitHub identity is still Contributor on the Static Web App only.
+
+A local prod run of `deploy-infra.ps1` sends the subscription **Administrative** activity log to the prod Log Analytics workspace and puts **CanNotDelete** locks on the SQL server, Key Vault, and that workspace. The GitHub workflow does not do those two steps. High-risk activity in the resource group emails `securityAlertEmail` from [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Leave that empty to skip the alerts. Dev does not get locks or alerts.
 
 Remaining follow-ups:
 
