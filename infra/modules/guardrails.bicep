@@ -17,21 +17,14 @@ var operations = [
     name: 'tde-write'
     operationName: 'Microsoft.Sql/servers/databases/transparentDataEncryption/write'
   }
+  // Auditing is disabled with a write. Activity log alerts reject auditingSettings/delete.
   {
     name: 'sql-audit-write'
     operationName: 'Microsoft.Sql/servers/auditingSettings/write'
   }
   {
-    name: 'sql-audit-delete'
-    operationName: 'Microsoft.Sql/servers/auditingSettings/delete'
-  }
-  {
     name: 'sql-db-audit-write'
     operationName: 'Microsoft.Sql/servers/databases/auditingSettings/write'
-  }
-  {
-    name: 'sql-db-audit-delete'
-    operationName: 'Microsoft.Sql/servers/databases/auditingSettings/delete'
   }
   {
     name: 'diagnostics-write'
