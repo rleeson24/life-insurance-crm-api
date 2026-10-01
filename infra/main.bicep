@@ -103,11 +103,20 @@ param enableSqlAuditing bool = environment == 'prod'
 @description('Send SQL diagnostics to Log Analytics. Disabled in dev to reduce ingestion cost.')
 param enableSqlDiagnostics bool = environment == 'prod'
 
+@description('Create production activity-log alerts. Dev stays off.')
+param enableSecurityGuardrails bool = environment == 'prod'
+
+@description('Email for high-risk activity-log alerts. Alerts are not created when this is empty.')
+param securityAlertEmail string = ''
+
 @description('Optional override for an existing globally unique ACR name (e.g. bbcrmdevacr).')
 param acrNameOverride string = ''
 
 @description('Optional override for an existing globally unique SQL server name (e.g. bbcrm-dev-sql).')
 param sqlServerNameOverride string = ''
+
+// Keep in sync with roleDefinitionId in infra/modules/github-deployer-role.bicep.
+var githubDeployerRoleDefinitionId = 'c4e8a1d6-7b32-4f90-9e15-6a0d3c8b2f47'
 
 var tags = {
   application: 'brokerbook'
@@ -208,6 +217,7 @@ module githubOidc 'modules/github-oidc.bicep' = {
     githubRepository: githubRepository
     githubEnvironment: environment
     acrName: acrName
+    githubDeployerRoleDefinitionId: githubDeployerRoleDefinitionId
   }
 }
 
@@ -250,6 +260,15 @@ module githubDeployRoleAssigner 'modules/github-deploy-role-assigner.bicep' = if
   name: 'github-deploy-role-assigner-${environment}'
   params: {
     principalId: githubOidc.outputs.principalId
+    githubDeployerRoleDefinitionId: githubDeployerRoleDefinitionId
+  }
+}
+
+module guardrails 'modules/guardrails.bicep' = if (enableSecurityGuardrails && !empty(securityAlertEmail)) {
+  name: 'guardrails-${environment}'
+  params: {
+    baseName: baseName
+    securityAlertEmail: securityAlertEmail
   }
 }
 
@@ -280,6 +299,7 @@ output githubDeployClientId string = githubOidc.outputs.clientId
 output githubClientDeployClientId string = createApiContainerApp ? githubClientOidc!.outputs.clientId : ''
 output containerAppIdentityPrincipalId string = containerApps.outputs.apiIdentityPrincipalId
 output logAnalyticsWorkspaceId string = monitor.outputs.logAnalyticsWorkspaceId
+output logAnalyticsWorkspaceName string = monitor.outputs.logAnalyticsWorkspaceName
 output staticWebAppName string = staticWebApp.outputs.name
 output clientHostname string = staticWebApp.outputs.hostname
 output clientOrigin string = staticWebApp.outputs.origin

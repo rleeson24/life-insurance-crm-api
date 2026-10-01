@@ -31,3 +31,6 @@ param enableSqlAuditing = true
 param enableSqlDiagnostics = true
 param sqlBackupStorageRedundancy = 'Geo'
 param enableSqlLongTermRetention = true
+param enableSecurityGuardrails = true
+// High-risk activity-log alerts. Leave empty to skip them.
+param securityAlertEmail = 'tech@embracingthememories.net'
