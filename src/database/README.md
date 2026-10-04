@@ -26,7 +26,7 @@ Do not pass `-IncludeSeed` on Azure. Map yourself afterward with `scripts/provis
 
 `apply-live-schema.cmd` is a wrapper for that local path.
 
-**Aspire:** Start the Aspire AppHost (not the API project alone). On first database creation, AppHost runs the same live scripts via `WithCreationScript` (including the dev seed). The volume is persistent, so later files such as `011` or `012` are not replayed — run `apply-live-schema.ps1` against the local container if the schema is behind.
+**Aspire:** Start the Aspire AppHost (not the API project alone). On first database creation, AppHost runs the same live scripts via `WithCreationScript` (including the dev seed). The volume is persistent, so later files such as `012`–`014` are not replayed — run `apply-live-schema.ps1` against the local container if the schema is behind.
 
 Copy the connection string from the **`BrokerBook` database resource** in the Aspire dashboard (not the parent `sql` server — that one often points at `master`). Then:
 

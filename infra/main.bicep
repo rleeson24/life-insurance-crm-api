@@ -22,7 +22,7 @@ param githubRepository string
 @description('GitHub repository that deploys the SPA (OIDC federation). Must match the GitHub repo name.')
 param githubClientRepository string = 'life-insurance-crm-client'
 
-@description('Extra browser origins allowed to call the API, in addition to the Static Web App URL.')
+@description('Extra browser origins allowed to call the API, in addition to the web Container App URL.')
 param additionalCorsOrigins array = []
 
 @description('SQL backup storage redundancy. Local for cheap dev; Geo for prod.')
@@ -36,13 +36,6 @@ param sqlBackupStorageRedundancy string = environment == 'prod' ? 'Geo' : 'Local
 
 @description('Enable SQL long-term backup retention. Off in dev to limit storage cost.')
 param enableSqlLongTermRetention bool = environment == 'prod'
-
-@description('Static Web Apps SKU. Free is enough for the Vite SPA.')
-@allowed([
-  'Free'
-  'Standard'
-])
-param staticWebAppSku string = 'Free'
 
 @description('Initial SQL administrator login. Replace with Entra-only admin after bootstrap.')
 param sqlAdministratorLogin string
@@ -60,6 +53,9 @@ param keyVaultSecretsOfficerPrincipalId string = ''
 
 @description('Container image for the API. The deploy script imports a bootstrap image into ACR so the first revision does not pull from MCR through the VNet.')
 param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
+
+@description('Container image for the advisor UI. The deploy script imports a bootstrap nginx image into ACR so the first revision does not pull through the VNet.')
+param webContainerImage string = 'mcr.microsoft.com/oss/nginx/nginx:1.27-alpine'
 
 @description('When false, skip the API Container App so ACR and the pull identity can be created first.')
 param createApiContainerApp bool = true
@@ -136,8 +132,6 @@ var sqlServerName = !empty(sqlServerNameOverride)
 
 // Key Vault names are globally unique. Use resource group ID (not name) so recreated RGs get a fresh vault name.
 var keyVaultName = take('bbcrm-${environment}-${resourceSuffix}', 24)
-
-var staticWebAppName = take('${baseName}-swa-${resourceSuffix}', 60)
 
 module network 'modules/network.bicep' = {
   name: 'network-${environment}'
@@ -221,16 +215,6 @@ module githubOidc 'modules/github-oidc.bicep' = {
   }
 }
 
-module staticWebApp 'modules/staticwebapp.bicep' = {
-  name: 'staticwebapp-${environment}'
-  params: {
-    location: location
-    staticWebAppName: staticWebAppName
-    tags: tags
-    sku: staticWebAppSku
-  }
-}
-
 module containerApps 'modules/containerapps.bicep' = {
   name: 'containerapps-${environment}'
   params: {
@@ -243,6 +227,7 @@ module containerApps 'modules/containerapps.bicep' = {
     acrLoginServer: acr.outputs.loginServer
     acrName: acrName
     containerImage: containerImage
+    webContainerImage: webContainerImage
     keyVaultUri: keyVault.outputs.keyVaultUri
     keyVaultName: keyVaultName
     sqlServerFqdn: sql.outputs.sqlServerFqdn
@@ -251,7 +236,7 @@ module containerApps 'modules/containerapps.bicep' = {
     memory: containerAppMemory
     minReplicas: containerAppMinReplicas
     maxReplicas: containerAppMaxReplicas
-    corsAllowedOrigins: concat([staticWebApp.outputs.origin], additionalCorsOrigins)
+    corsAllowedOrigins: additionalCorsOrigins
     createApiApp: createApiContainerApp
   }
 }
@@ -281,7 +266,8 @@ module githubClientOidc 'modules/github-client-oidc.bicep' = if (createApiContai
     githubOwner: githubOwner
     githubRepository: githubClientRepository
     githubEnvironment: environment
-    staticWebAppName: staticWebApp.outputs.name
+    acrName: acrName
+    webContainerAppName: containerApps.outputs.webName
     containerAppName: containerApps.outputs.apiName
   }
 }
@@ -300,7 +286,7 @@ output githubClientDeployClientId string = createApiContainerApp ? githubClientO
 output containerAppIdentityPrincipalId string = containerApps.outputs.apiIdentityPrincipalId
 output logAnalyticsWorkspaceId string = monitor.outputs.logAnalyticsWorkspaceId
 output logAnalyticsWorkspaceName string = monitor.outputs.logAnalyticsWorkspaceName
-output staticWebAppName string = staticWebApp.outputs.name
-output clientHostname string = staticWebApp.outputs.hostname
-output clientOrigin string = staticWebApp.outputs.origin
-output clientRedirectUri string = staticWebApp.outputs.redirectUri
+output clientAppName string = containerApps.outputs.webName
+output clientHostname string = containerApps.outputs.webFqdn
+output clientOrigin string = empty(containerApps.outputs.webFqdn) ? '' : 'https://${containerApps.outputs.webFqdn}'
+output clientRedirectUri string = empty(containerApps.outputs.webFqdn) ? '' : 'https://${containerApps.outputs.webFqdn}/'

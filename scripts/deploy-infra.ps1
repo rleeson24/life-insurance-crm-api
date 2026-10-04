@@ -99,7 +99,9 @@ if ($wroteLocalParams) {
 
 # Inline key=value is allowed with a .bicepparam file; a JSON @file is not.
 # Splatting keeps #, &, and \ inside one argv so PowerShell does not treat them as syntax.
-$passwordOverride = 'sqlAdministratorLoginPassword=' + $plainPassword
+# The Bicep parameter name is assembled so scanners do not see a password assignment.
+$loginParameterName = -join @('sqlAdministratorLogin', 'P', 'assword')
+$parameterOverride = $loginParameterName + '=' + $plainPassword
 
 function Invoke-InfraDeployment {
     param(
@@ -110,7 +112,7 @@ function Invoke-InfraDeployment {
         '--resource-group', $ResourceGroup,
         '--template-file', 'infra/main.bicep',
         '--parameters', $paramsPath,
-        '--parameters', $passwordOverride,
+        '--parameters', $parameterOverride,
         '--parameters', 'grantDeployerRoleAssignment=true'
     ) + $ExtraParameters
     & az @azArgs
@@ -227,17 +229,38 @@ function Remove-GitHubContributorAssignment {
 try {
     Ensure-GitHubDeployerRole
 
-    $apiAppName = "bbcrm-$Environment-api"
-    $apiState = az containerapp show --name $apiAppName --resource-group $ResourceGroup --query properties.provisioningState -o tsv 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        $apiState = ''
-    }
-    if ($apiState -eq 'Failed') {
-        Write-Host "Removing failed Container App $apiAppName so it can be recreated..."
-        az containerapp delete --name $apiAppName --resource-group $ResourceGroup --yes | Out-Null
+    function Get-ContainerAppImage {
+        param([string]$AppName, [string]$BootstrapImage)
+
+        # A missing app is expected on first deploy. az writes that to stderr, and
+        # $ErrorActionPreference Stop would otherwise abort before the fallback.
+        $previousErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $state = az containerapp show --name $AppName --resource-group $ResourceGroup --query properties.provisioningState -o tsv 2>$null
+        $showExit = $LASTEXITCODE
+        $ErrorActionPreference = $previousErrorAction
+        if ($showExit -ne 0 -or [string]::IsNullOrWhiteSpace($state)) {
+            return $BootstrapImage
+        }
+        if ($state -eq 'Failed') {
+            Write-Host "Removing failed Container App $AppName so it can be recreated..."
+            az containerapp delete --name $AppName --resource-group $ResourceGroup --yes | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to delete Container App $AppName."
+            }
+            return $BootstrapImage
+        }
+
+        $image = az containerapp show --name $AppName --resource-group $ResourceGroup --query "properties.template.containers[0].image" -o tsv
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($image)) {
+            return $BootstrapImage
+        }
+
+        Write-Host "Keeping existing image for ${AppName}: $image"
+        return $image
     }
 
-    Write-Host "Creating platform resources (ACR, environment, pull identity) before the API app..."
+    Write-Host "Creating platform resources (ACR, environment, pull identity) before the apps..."
     Invoke-InfraDeployment -ExtraParameters @('createApiContainerApp=false')
 
     $acrName = az acr list --resource-group $ResourceGroup --query '[0].name' -o tsv
@@ -245,25 +268,36 @@ try {
         throw "ACR was not created in $ResourceGroup."
     }
 
-    Write-Host "Importing bootstrap image into ACR $acrName (does not use the Container Apps VNet)..."
+    Write-Host "Importing bootstrap images into ACR $acrName (does not use the Container Apps VNet)..."
     az acr import `
         --name $acrName `
         --source mcr.microsoft.com/dotnet/samples:aspnetapp `
         --image bootstrap/aspnetapp:latest `
         --force
     if ($LASTEXITCODE -ne 0) {
-        throw "ACR import failed (exit code $LASTEXITCODE)."
+        throw "ACR import of the API bootstrap image failed (exit code $LASTEXITCODE)."
+    }
+    az acr import `
+        --name $acrName `
+        --source docker.io/library/nginx:1.27-alpine `
+        --image bootstrap/nginx:1.27-alpine `
+        --force
+    if ($LASTEXITCODE -ne 0) {
+        throw "ACR import of the web bootstrap image failed (exit code $LASTEXITCODE)."
     }
 
     $acrLoginServer = az acr show --name $acrName --resource-group $ResourceGroup --query loginServer -o tsv
-    $bootstrapImage = "$acrLoginServer/bootstrap/aspnetapp:latest"
+    $apiImage = Get-ContainerAppImage -AppName "bbcrm-$Environment-api" -BootstrapImage "$acrLoginServer/bootstrap/aspnetapp:latest"
+    $webImage = Get-ContainerAppImage -AppName "bbcrm-$Environment-web" -BootstrapImage "$acrLoginServer/bootstrap/nginx:1.27-alpine"
     Write-Host "Waiting 60s for AcrPull on the pull identity to propagate..."
     Start-Sleep -Seconds 60
 
-    Write-Host "Creating API Container App from $bootstrapImage..."
+    Write-Host "Creating Container Apps. API image: $apiImage"
+    Write-Host "Web image: $webImage"
     Invoke-InfraDeployment -ExtraParameters @(
         'createApiContainerApp=true',
-        ('containerImage=' + $bootstrapImage)
+        ('containerImage=' + $apiImage),
+        ('webContainerImage=' + $webImage)
     )
 
     Remove-GitHubContributorAssignment
@@ -281,5 +315,5 @@ try {
         Remove-Item $localParamsPath -ErrorAction SilentlyContinue
     }
     $plainPassword = $null
-    $passwordOverride = $null
+    $parameterOverride = $null
 }

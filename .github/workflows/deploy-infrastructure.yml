@@ -33,6 +33,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Resolve current container images
+        id: images
+        run: |
+          set -euo pipefail
+          RG="${{ inputs.resourceGroup }}"
+          ENV="${{ inputs.environment }}"
+          api_image="$(az containerapp show --name "bbcrm-${ENV}-api" --resource-group "$RG" --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)"
+          web_image="$(az containerapp show --name "bbcrm-${ENV}-web" --resource-group "$RG" --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)"
+          echo "api_image=${api_image}" >> "$GITHUB_OUTPUT"
+          echo "web_image=${web_image}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy Bicep
         uses: azure/arm-deploy@v2
         with:
@@ -42,6 +53,8 @@ jobs:
           parameters: ./infra/parameters/${{ inputs.environment }}.bicepparam
           additionalArguments: >-
             --parameters sqlAdministratorLoginPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+            ${{ steps.images.outputs.api_image != '' && format('--parameters containerImage={0}', steps.images.outputs.api_image) || '' }}
+            ${{ steps.images.outputs.web_image != '' && format('--parameters webContainerImage={0}', steps.images.outputs.web_image) || '' }}
 
       - name: Show deployment outputs
         run: |

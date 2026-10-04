@@ -123,7 +123,7 @@ Restart the Container App so it reloads configuration. Runtime wiring is in [azu
 1. **New registration** → name `BrokerBookCRM-SPA` → single tenant.
 2. **Authentication** → **Add a platform** → **Single-page application**:
   - `http://localhost:5387/` (Vite port in the client repo `src/vite.config.ts`)
-  - Production SPA origin from Bicep output `clientRedirectUri` (exact origin plus trailing slash, e.g. `https://<name>.azurestaticapps.net/`)
+  - Production SPA origin from Bicep output `clientRedirectUri` (exact origin plus trailing slash, e.g. `https://bbcrm-dev-web.<env>.azurecontainerapps.io/`)
 3. Implicit grant and hybrid flows: **off**. Auth code + PKCE only (MSAL default).
 4. **API permissions** → **Add a permission** → **My APIs** → `BrokerBookCRM-API` → delegated `access_as_user` → **Grant admin consent**.
 5. No client secret. No certificates.

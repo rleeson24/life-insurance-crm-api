@@ -16,14 +16,17 @@ param memory string
 param minReplicas int
 param maxReplicas int
 
-@description('When false, create the environment and ACR pull identity only. Used so the deploy script can import a bootstrap image before the first revision.')
+@description('When false, create the environment and ACR pull identity only. Used so the deploy script can import bootstrap images before the first revisions.')
 param createApiApp bool = true
 
-@description('Browser origins allowed to call the API (Static Web App URL and optional extras).')
+@description('Container image for the advisor UI. The deploy script imports a bootstrap nginx image into ACR so the first revision does not pull from a public registry through the VNet.')
+param webContainerImage string
+
+@description('Extra browser origins allowed to call the API, in addition to the web Container App.')
 param corsAllowedOrigins array = []
 
-var corsEnv = [for (origin, i) in corsAllowedOrigins: {
-  name: 'Cors__AllowedOrigins__${i}'
+var extraCorsEnv = [for (origin, i) in corsAllowedOrigins: {
+  name: 'Cors__AllowedOrigins__${i + 1}'
   value: origin
 }]
 
@@ -176,7 +179,15 @@ resource apiContainerApp 'Microsoft.App/containerApps@2024-03-01' = if (createAp
                 value: keyVaultUri
               }
             ],
-            corsEnv
+            concat(
+              [
+                {
+                  name: 'Cors__AllowedOrigins__0'
+                  value: 'https://${webContainerApp!.properties.configuration.ingress.fqdn}'
+                }
+              ],
+              extraCorsEnv
+            )
           )
         }
       ]
@@ -214,7 +225,86 @@ resource keyVaultCryptoUserAssignment 'Microsoft.Authorization/roleAssignments@2
   }
 }
 
+resource webContainerApp 'Microsoft.App/containerApps@2024-03-01' = if (createApiApp) {
+  name: '${baseName}-web'
+  location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${apiPullIdentity.id}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: containerAppsEnvironment.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: true
+        targetPort: 80
+        transport: 'auto'
+        allowInsecure: false
+        traffic: [
+          {
+            latestRevision: true
+            weight: 100
+          }
+        ]
+      }
+      registries: [
+        {
+          server: acrLoginServer
+          identity: apiPullIdentity.id
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'web'
+          image: webContainerImage
+          resources: {
+            cpu: json(cpu)
+            memory: memory
+          }
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: {
+                path: '/'
+                port: 80
+                scheme: 'HTTP'
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 30
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: '/'
+                port: 80
+                scheme: 'HTTP'
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 10
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
+      }
+    }
+  }
+  dependsOn: [
+    acrPullForUai
+  ]
+}
+
 output apiName string = createApiApp ? apiContainerApp!.name : ''
 output apiFqdn string = createApiApp ? apiContainerApp!.properties.configuration.ingress.fqdn : ''
 output apiIdentityPrincipalId string = createApiApp ? apiContainerApp!.identity.principalId : ''
 output apiPullIdentityId string = apiPullIdentity.id
+output webName string = createApiApp ? webContainerApp!.name : ''
+output webFqdn string = createApiApp ? webContainerApp!.properties.configuration.ingress.fqdn : ''
