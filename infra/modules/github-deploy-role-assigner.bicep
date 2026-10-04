@@ -12,7 +12,8 @@ param githubDeployerRoleDefinitionId string
 var roleBasedAccessControlAdministratorRoleId = 'f58310d9-a9f6-439a-9e8d-f62e7b41a168'
 var allowedRoleDefinitionIds = [
   githubDeployerRoleDefinitionId // BrokerBook GitHub Deployer — API deploy identity on the resource group
-  'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor — client deploy identity on the Static Web App only
+  'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor — retained so existing assignments stay manageable
+  '358470bc-b998-42bd-ab17-a7e34c199c0f' // Container Apps Contributor — client deploy identity on the web app and environment join
   '8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush — GitHub deploy identity
   '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull — API pull identity
   '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User — API

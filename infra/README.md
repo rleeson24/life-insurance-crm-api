@@ -6,8 +6,7 @@ Modular Bicep for BrokerBook on Azure:
 - Azure SQL (no public endpoint, private link, TDE, auditing; Geo backups + long-term retention in prod)
 - Key Vault (RBAC, soft delete, private endpoint)
 - Azure Container Registry (admin disabled)
-- Container Apps Environment + API app (managed identity, health probes)
-- Azure Static Web Apps for the Vite SPA (CORS origin wired into the API)
+- Container Apps Environment + API app and a separate web app for the Vite SPA (managed identity, health probes, CORS origin wired to the web app)
 - Log Analytics + Application Insights
 - GitHub Actions OIDC identities for **both** repos (API deploy vs client deploy; no long-lived SP secrets)
 
@@ -25,7 +24,6 @@ infra/
     keyvault.bicep
     sql.bicep
     containerapps.bicep
-    staticwebapp.bicep
     github-oidc.bicep
     github-client-oidc.bicep
     github-deploy-role-assigner.bicep
@@ -46,11 +44,10 @@ Sizing is parameterized per environment. Defaults target the **lowest viable com
 
 | Resource | Dev | Prod |
 |----------|-----|------|
-| Container App CPU / memory | 0.25 vCPU / 0.5 GiB | 0.5 vCPU / 1 GiB |
-| Container App replicas | 0–1 (scale to zero when idle) | 1–2 (always at least one) |
+| Container App CPU / memory | 0.25 vCPU / 0.5 GiB each (API and web) | 0.5 vCPU / 1 GiB each (API and web) |
+| Container App replicas | 0–1 each (scale to zero when idle) | 1–2 each (always at least one) |
 | Azure SQL | Serverless GP_S_Gen5 (auto-pause after 60 min idle) | Basic (~$5/mo; bump to S0/Standard when needed) |
 | ACR | Basic | Basic |
-| Static Web App | Free | Free |
 | Log Analytics retention | 30 days (PerGB2018 minimum) | 30 days |
 | SQL backups | Local redundancy, no LTR | Geo redundancy + 4 weeks / 12 months / 5 years LTR |
 | SQL auditing / diagnostics | Off (saves ingestion) | On |
@@ -86,9 +83,9 @@ Default parameter files use **`centralus`**. Override at deploy time if needed:
 
 ## First-time deploy (local)
 
-The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). `deploy-infra.ps1` creates the subscription custom role **BrokerBook GitHub Deployer**, assigns it to that identity on the resource group, and removes any previous **Contributor** assignment on the same group. It also grants **Role Based Access Control Administrator**, limited to the roles this template assigns (GitHub Deployer, AcrPull, AcrPush, Key Vault, Contributor for the client Static Web App, Reader). That identity cannot create role assignments by itself, and GitHub Actions cannot grant this permission to itself. Re-run `deploy-infra.ps1` once per environment before **Deploy infrastructure** in Actions. The GitHub workflow stays resource-group scoped and does not create the custom role.
+The GitHub OIDC identity is created by this template, so the **first** deploy of each environment must be local (`az login`). `deploy-infra.ps1` creates the subscription custom role **BrokerBook GitHub Deployer**, assigns it to that identity on the resource group, and removes any previous **Contributor** assignment on the same group. It also grants **Role Based Access Control Administrator**, limited to the roles this template assigns (GitHub Deployer, AcrPull, AcrPush, Key Vault, Container Apps Contributor for the web app, Reader). That identity cannot create role assignments by itself, and GitHub Actions cannot grant this permission to itself. Re-run `deploy-infra.ps1` once per environment before **Deploy infrastructure** in Actions. The GitHub workflow stays resource-group scoped and does not create the custom role.
 
-The first API revision pulls a **bootstrap image from ACR**, not from MCR. Container Apps in the VNet cannot reliably pull public MCR images, which previously ended in `Operation expired`. `deploy-infra.ps1` imports `bootstrap/aspnetapp:latest` into ACR, then creates the app. GitHub **Deploy API** replaces that image with the real API.
+The first revisions pull **bootstrap images from ACR**, not from a public registry. Container Apps in the VNet cannot reliably pull public images, which previously ended in `Operation expired`. `deploy-infra.ps1` imports `bootstrap/aspnetapp:latest` and `bootstrap/nginx:1.27-alpine` into ACR, then creates the API and web apps. If an app already exists, the script keeps its current image. GitHub **Deploy API** and **Deploy client** replace the bootstrap images.
 
 **Safer password passing** — `az` does not accept a JSON `@parameters` file together with a `.bicepparam` file. Use the helper script (recommended):
 
@@ -104,7 +101,7 @@ After deploy, note outputs:
 - `githubDeployClientId` — federated identity client ID for the **API** GitHub repo
 - `githubClientDeployClientId` — federated identity client ID for the **client** GitHub repo
 - `acrLoginServer`, `containerAppFqdn`, `keyVaultUri`, `keyVaultName`, `sqlServerFqdn`
-- `clientOrigin`, `clientRedirectUri`, `staticWebAppName` — SPA URL and Entra redirect URI
+- `clientOrigin`, `clientRedirectUri`, `clientAppName` — SPA URL and Entra redirect URI
 
 ### Key Vault name already in use (`VaultAlreadyExists`)
 
@@ -164,9 +161,9 @@ The GitHub **environment** name (`dev` or `prod`) must match the workflow input 
 |----------|------|---------|
 | [`deploy-infrastructure.yml`](../.github/workflows/deploy-infrastructure.yml) | API | Manual Bicep deploy / update of the whole platform |
 | [`deploy-api.yml`](../.github/workflows/deploy-api.yml) | API | Build Docker image, push to ACR by digest, update Container App |
-| `deploy-client.yml` | Client | Build Vite SPA, upload to the provisioned Static Web App |
+| `deploy-client.yml` | Client | Build the Vite SPA image, push it to ACR, update the web Container App |
 
-Both deploy workflows use OIDC (`azure/login@v2`) — no client secrets in GitHub. The client identity can update the Static Web App and read the API FQDN; it cannot change SQL, Key Vault, or the Container App image.
+Both deploy workflows use OIDC (`azure/login@v2`) — no client secrets in GitHub. The client identity can push to ACR and update the web Container App, and it can read the API FQDN. It cannot change SQL, Key Vault, or the API image.
 
 Typical order:
 
@@ -176,7 +173,9 @@ Typical order:
 4. Run **Deploy API** to push the real API image
 5. Run **Deploy client** from the client repo (sets `VITE_API_BASE_URL` from the API FQDN)
 
-Bicep sets API `Cors:AllowedOrigins` to `clientOrigin` so the SPA can call the API once both apps are deployed.
+Bicep sets API `Cors:AllowedOrigins` to the web Container App origin so the SPA can call the API once both apps are deployed.
+
+An earlier Static Web App is not deleted by this template. After Entra uses the new `clientRedirectUri`, delete that Static Web App so the advisor UI is no longer served from it.
 
 ## Security notes
 
@@ -190,7 +189,7 @@ After deploying infra:
 
 Infra grants the API system identity **Key Vault Secrets User** (read) and **Key Vault Crypto User** (unwrap the field-encryption DEK). **AcrPull** is granted to the user-assigned pull identity that the Container App uses to pull from ACR. Deploy API grants AcrPull to the system identity itself when it points the registry at that identity. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
 
-The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource group, not Contributor. It can deploy the platform and the API, and cannot delete the SQL server or database, delete long-term retention backups, purge Key Vault, delete Log Analytics or diagnostic settings, delete resource locks, or export the database. The client GitHub identity is still Contributor on the Static Web App only.
+The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource group, not Contributor. It can deploy the platform and the API, and cannot delete the SQL server or database, delete long-term retention backups, purge Key Vault, delete Log Analytics or diagnostic settings, delete resource locks, or export the database. The client GitHub identity has AcrPush on the registry and Container Apps Contributor on the web app and on the environment (environment join only; that role does not grant environment write). It cannot change the API app.
 
 A local prod run of `deploy-infra.ps1` sends the subscription **Administrative** activity log to the prod Log Analytics workspace and puts **CanNotDelete** locks on the SQL server, Key Vault, and that workspace. The GitHub workflow does not do those two steps. High-risk activity in the resource group emails `securityAlertEmail` from [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Leave that empty to skip the alerts. Dev does not get locks or alerts.
 

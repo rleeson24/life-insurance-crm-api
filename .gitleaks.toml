@@ -19,7 +19,7 @@ regexes = [
   '''b86a8fe4-44ce-4948-aee5-eccb2c155cd7''',
   '''acdd72a7-3385-48ef-bd42-f606fba81ae7''',
   '''605a6796-5cf0-4a61-80f0-ff2d484360ee''',
-  '''e1da25de-af92-4e5c-a9ac-1bc186bb9a4f''',
+  '''e1da25de-af92-4e5c-a9ac-1bc186bb9a4f'''
 ]
 
 # Gitleaks treats the first capturing group as the secret. Keywords must be

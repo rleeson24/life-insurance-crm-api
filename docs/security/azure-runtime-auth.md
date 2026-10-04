@@ -67,7 +67,7 @@ Note outputs (names are auto-generated on first deploy — copy from output, do 
 - `acrName`, `acrLoginServer` — for GitHub deploy workflow
 - `containerAppIdentityPrincipalId` — managed identity object ID
 - `keyVaultUri`, `keyVaultName`
-- `clientOrigin`, `clientRedirectUri`, `staticWebAppName` — SPA URL; add `clientRedirectUri` to the Entra SPA registration
+- `clientOrigin`, `clientRedirectUri`, `clientAppName` — SPA URL; add `clientRedirectUri` to the Entra SPA registration
 - `githubDeployClientId` — API repo GitHub OIDC (`AZURE_CLIENT_ID`)
 - `githubClientDeployClientId` — client repo GitHub OIDC (`AZURE_CLIENT_ID` in **that** repo)
 
@@ -124,6 +124,33 @@ Optional — SQL connection string **only** if managed-identity SQL is not in us
 ```powershell
 az keyvault secret set --vault-name <keyVaultName> --name "Database--ConnectionString" --value "<ado-net-connection-string>"
 ```
+
+**Field encryption (required in Azure)** before the API can encrypt client PHI. Use a **raw DEK** unless you already publish `FieldEncryption--WrappedDek` (optional; needs the vault RSA key `field-encryption` and **Key Vault Crypto User** on the API identity):
+
+```powershell
+# Generate two independent 32-byte keys (do not commit or log these values).
+$dekBytes = New-Object byte[] 32
+$blindBytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($dekBytes)
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($blindBytes)
+$dek = [Convert]::ToBase64String($dekBytes)
+$blind = [Convert]::ToBase64String($blindBytes)
+
+az keyvault secret set --vault-name <keyVaultName> --name "FieldEncryption--Key" --value $dek
+az keyvault secret set --vault-name <keyVaultName> --name "FieldEncryption--BlindIndexKey" --value $blind
+```
+
+`FieldEncryption--BlindIndexKey` must be **different** from `FieldEncryption--Key`. Medicare number search uses the blind-index secret; the DEK encrypts DOB, MBI, and Part A/B dates.
+
+Optional — RSA-wrapped DEK instead of a raw DEK secret:
+
+```powershell
+az keyvault secret set --vault-name <keyVaultName> --name "FieldEncryption--WrappedDek" --value "<base64-wrapped-dek>"
+```
+
+If you use `WrappedDek`, you still need `FieldEncryption--BlindIndexKey`. Do not set both `FieldEncryption--Key` and `FieldEncryption--WrappedDek` to different DEKs; the API prefers `FieldEncryption--Key` when it is present.
+
+Apply `012_ClientFieldEncryption.sql` (via `apply-live-schema.ps1`) to the target database before deploying an API build that writes ciphertext.
 
 Redeploy or restart the Container App after adding secrets the API reads at startup.
 
