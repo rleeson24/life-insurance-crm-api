@@ -112,7 +112,11 @@ public static class SecurityEventDetail
     public static string CreatedTenant(bool isActive) =>
         $"created;isActive={Bit(isActive)}";
 
-    public static string? TenantChange(bool previousActive, bool nextActive, bool nameChanged)
+    public static string? TenantChange(
+        bool previousActive,
+        bool nextActive,
+        bool nameChanged,
+        IReadOnlyList<string>? changedFields = null)
     {
         var parts = new List<string>();
         if (previousActive != nextActive)
@@ -123,6 +127,11 @@ public static class SecurityEventDetail
         if (nameChanged)
         {
             parts.Add("nameChanged=true");
+        }
+
+        if (changedFields is { Count: > 0 })
+        {
+            parts.Add("fields=" + string.Join(',', changedFields));
         }
 
         return parts.Count == 0 ? null : string.Join(';', parts);

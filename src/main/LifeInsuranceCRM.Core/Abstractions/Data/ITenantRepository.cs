@@ -11,6 +11,7 @@ public interface ITenantRepository
 
     Task<TenantDto> InsertAsync(
         string name,
+        TenantContactFields contact,
         AuditStamp audit,
         CancellationToken cancellationToken = default);
 
@@ -18,6 +19,7 @@ public interface ITenantRepository
         Guid tenantId,
         string? name,
         bool? isActive,
+        TenantContactFields contact,
         AuditStamp audit,
         CancellationToken cancellationToken = default);
 }

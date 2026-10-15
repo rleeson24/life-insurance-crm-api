@@ -124,4 +124,67 @@ public class TenantInputValidatorTests
 
         Assert.Equal(UseCaseStatus.Success, response.Status);
     }
+
+    [Fact]
+    public void ValidateCreate_WhenNoticesEmailInvalid_ReturnsInvalidRequest()
+    {
+        var response = _validator.ValidateCreate(new CreateTenantModel
+        {
+            Name = "North Agency",
+            NoticesEmail = "not-an-email",
+        });
+
+        Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
+        Assert.Equal(TenantErrorCodes.NoticesEmailInvalid, response.ErrorCode);
+    }
+
+    [Fact]
+    public void ValidateCreate_WhenStateIsNotTwoCharacters_ReturnsInvalidRequest()
+    {
+        var response = _validator.ValidateCreate(new CreateTenantModel
+        {
+            Name = "North Agency",
+            State = "Massachusetts",
+        });
+
+        Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
+        Assert.Equal(TenantErrorCodes.StateInvalid, response.ErrorCode);
+    }
+
+    [Fact]
+    public void ValidateCreate_WhenIncidentTelephoneTooLong_ReturnsInvalidRequest()
+    {
+        var response = _validator.ValidateCreate(new CreateTenantModel
+        {
+            Name = "North Agency",
+            IncidentTelephone = new string('5', 33),
+        });
+
+        Assert.Equal(UseCaseStatus.InvalidRequest, response.Status);
+        Assert.Equal(TenantErrorCodes.IncidentTelephoneTooLong, response.ErrorCode);
+    }
+
+    [Fact]
+    public void ValidateUpdate_WhenOnlyNoticesEmailProvided_ReturnsSuccess()
+    {
+        var response = _validator.ValidateUpdate(new UpdateTenantModel
+        {
+            TenantId = Guid.NewGuid(),
+            NoticesEmail = "notices@example.com",
+        });
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
+    }
+
+    [Fact]
+    public void ValidateUpdate_WhenClearingAddress_ReturnsSuccess()
+    {
+        var response = _validator.ValidateUpdate(new UpdateTenantModel
+        {
+            TenantId = Guid.NewGuid(),
+            AddressLine1 = "",
+        });
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
+    }
 }

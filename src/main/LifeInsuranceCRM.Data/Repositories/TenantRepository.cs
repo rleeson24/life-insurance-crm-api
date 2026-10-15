@@ -8,7 +8,10 @@ namespace LifeInsuranceCRM.Data.Repositories;
 public sealed class TenantRepository : ITenantRepository
 {
     private const string TenantSelectColumns = """
-        t.TenantId, t.Name, t.IsActive, t.CreatedAt, t.UpdatedAt,
+        t.TenantId, t.Name, t.IsActive,
+        t.AddressLine1, t.AddressLine2, t.City, t.State, t.PostalCode,
+        t.NoticesEmail, t.IncidentContact, t.IncidentTelephone,
+        t.CreatedAt, t.UpdatedAt,
         (
             SELECT COUNT(*)
             FROM dbo.Clients c
@@ -75,15 +78,22 @@ public sealed class TenantRepository : ITenantRepository
 
     public async Task<TenantDto> InsertAsync(
         string name,
+        TenantContactFields contact,
         AuditStamp audit,
         CancellationToken cancellationToken = default)
     {
         var tenantId = Guid.NewGuid();
         const string sql = """
             INSERT INTO dbo.Tenants (
-                TenantId, Name, IsActive, CreatedAt, CreatedByUserId, UpdatedAt, UpdatedByUserId, IsDeleted)
+                TenantId, Name, IsActive,
+                AddressLine1, AddressLine2, City, State, PostalCode,
+                NoticesEmail, IncidentContact, IncidentTelephone,
+                CreatedAt, CreatedByUserId, UpdatedAt, UpdatedByUserId, IsDeleted)
             VALUES (
-                @TenantId, @Name, 1, @CreatedAt, @CreatedByUserId, @UpdatedAt, @UpdatedByUserId, 0);
+                @TenantId, @Name, 1,
+                @AddressLine1, @AddressLine2, @City, @State, @PostalCode,
+                @NoticesEmail, @IncidentContact, @IncidentTelephone,
+                @CreatedAt, @CreatedByUserId, @UpdatedAt, @UpdatedByUserId, 0);
             """;
 
         await _dbExecutor.ExecuteNonQueryAsync(
@@ -91,6 +101,14 @@ public sealed class TenantRepository : ITenantRepository
             cancellationToken,
             new SqlParameter("@TenantId", tenantId),
             new SqlParameter("@Name", name),
+            TextParameter("@AddressLine1", contact.AddressLine1),
+            TextParameter("@AddressLine2", contact.AddressLine2),
+            TextParameter("@City", contact.City),
+            TextParameter("@State", contact.State),
+            TextParameter("@PostalCode", contact.PostalCode),
+            TextParameter("@NoticesEmail", contact.NoticesEmail),
+            TextParameter("@IncidentContact", contact.IncidentContact),
+            TextParameter("@IncidentTelephone", contact.IncidentTelephone),
             new SqlParameter("@CreatedAt", audit.Timestamp),
             new SqlParameter("@CreatedByUserId", audit.UserId),
             new SqlParameter("@UpdatedAt", audit.Timestamp),
@@ -103,6 +121,7 @@ public sealed class TenantRepository : ITenantRepository
         Guid tenantId,
         string? name,
         bool? isActive,
+        TenantContactFields contact,
         AuditStamp audit,
         CancellationToken cancellationToken = default)
     {
@@ -110,6 +129,14 @@ public sealed class TenantRepository : ITenantRepository
             UPDATE dbo.Tenants
             SET Name = COALESCE(@Name, Name),
                 IsActive = COALESCE(@IsActive, IsActive),
+                AddressLine1 = @AddressLine1,
+                AddressLine2 = @AddressLine2,
+                City = @City,
+                State = @State,
+                PostalCode = @PostalCode,
+                NoticesEmail = @NoticesEmail,
+                IncidentContact = @IncidentContact,
+                IncidentTelephone = @IncidentTelephone,
                 UpdatedAt = @UpdatedAt,
                 UpdatedByUserId = @UpdatedByUserId
             WHERE TenantId = @TenantId AND IsDeleted = 0;
@@ -121,6 +148,14 @@ public sealed class TenantRepository : ITenantRepository
             new SqlParameter("@TenantId", tenantId),
             new SqlParameter("@Name", (object?)name ?? DBNull.Value),
             new SqlParameter("@IsActive", (object?)isActive ?? DBNull.Value),
+            TextParameter("@AddressLine1", contact.AddressLine1),
+            TextParameter("@AddressLine2", contact.AddressLine2),
+            TextParameter("@City", contact.City),
+            TextParameter("@State", contact.State),
+            TextParameter("@PostalCode", contact.PostalCode),
+            TextParameter("@NoticesEmail", contact.NoticesEmail),
+            TextParameter("@IncidentContact", contact.IncidentContact),
+            TextParameter("@IncidentTelephone", contact.IncidentTelephone),
             new SqlParameter("@UpdatedAt", audit.Timestamp),
             new SqlParameter("@UpdatedByUserId", audit.UserId));
 
@@ -129,11 +164,22 @@ public sealed class TenantRepository : ITenantRepository
             : await GetByIdAsync(tenantId, cancellationToken);
     }
 
+    private static SqlParameter TextParameter(string name, string? value) =>
+        new(name, (object?)value ?? DBNull.Value);
+
     private static TenantDto ReadTenant(SqlDataReader reader) => new()
     {
         TenantId = reader.GetGuid("TenantId"),
         Name = reader.GetString(reader.GetOrdinal("Name")),
         IsActive = reader.GetBoolean("IsActive"),
+        AddressLine1 = reader.GetNullableString("AddressLine1"),
+        AddressLine2 = reader.GetNullableString("AddressLine2"),
+        City = reader.GetNullableString("City"),
+        State = reader.GetNullableString("State"),
+        PostalCode = reader.GetNullableString("PostalCode"),
+        NoticesEmail = reader.GetNullableString("NoticesEmail"),
+        IncidentContact = reader.GetNullableString("IncidentContact"),
+        IncidentTelephone = reader.GetNullableString("IncidentTelephone"),
         ClientCount = reader.GetInt32("ClientCount"),
         CreatedAt = reader.GetDateTimeOffset("CreatedAt"),
         UpdatedAt = reader.GetDateTimeOffset("UpdatedAt"),

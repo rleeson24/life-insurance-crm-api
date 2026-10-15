@@ -68,6 +68,25 @@ public sealed class DevelopmentDatabaseInitializer : IDevelopmentDatabaseInitial
         END
         """;
 
+    private const string EnsureTenantContactSql = """
+        IF COL_LENGTH('dbo.Tenants', 'AddressLine1') IS NULL
+            ALTER TABLE dbo.Tenants ADD AddressLine1 nvarchar(200) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'AddressLine2') IS NULL
+            ALTER TABLE dbo.Tenants ADD AddressLine2 nvarchar(200) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'City') IS NULL
+            ALTER TABLE dbo.Tenants ADD City nvarchar(100) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'State') IS NULL
+            ALTER TABLE dbo.Tenants ADD State nvarchar(2) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'PostalCode') IS NULL
+            ALTER TABLE dbo.Tenants ADD PostalCode nvarchar(10) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'NoticesEmail') IS NULL
+            ALTER TABLE dbo.Tenants ADD NoticesEmail nvarchar(320) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'IncidentContact') IS NULL
+            ALTER TABLE dbo.Tenants ADD IncidentContact nvarchar(200) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'IncidentTelephone') IS NULL
+            ALTER TABLE dbo.Tenants ADD IncidentTelephone nvarchar(32) NULL;
+        """;
+
     private const string EnsureDevUserSql = """
         DECLARE @TenantId uniqueidentifier = '22222222-2222-2222-2222-222222222222';
         DECLARE @DevUserId uniqueidentifier = '11111111-1111-1111-1111-111111111111';
@@ -114,6 +133,7 @@ public sealed class DevelopmentDatabaseInitializer : IDevelopmentDatabaseInitial
             await ExecuteNonQueryAsync(connection, EnsureImportMappingProfilesSql, cancellationToken);
             await ExecuteNonQueryAsync(connection, EnsureImportMappingProfileIndexSql, cancellationToken);
             await ExecuteNonQueryAsync(connection, EnsureImportMappingProfilePolicySql, cancellationToken);
+            await ExecuteNonQueryAsync(connection, EnsureTenantContactSql, cancellationToken);
             await ExecuteNonQueryAsync(connection, EnsureDevUserSql, cancellationToken);
 
             _logger.LogInformation("Development database initialization completed");

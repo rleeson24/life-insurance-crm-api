@@ -23,6 +23,7 @@ internal static class LiveSchemaScripts
         "013_BypassTenantFilter.sql",
         "014_AuthSecurityEventDetails.sql",
         "015_ImportMappingProfiles.sql",
+        "016_TenantContact.sql",
         "seed/001_DevelopmentTenant.sql",
     ];
 

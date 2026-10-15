@@ -85,4 +85,17 @@ public class SecurityEventDetailTests
             "isActive=true->false;nameChanged=true",
             SecurityEventDetail.TenantChange(previousActive: true, nextActive: false, nameChanged: true));
     }
+
+    [Fact]
+    public void TenantChange_RecordsContactFieldNamesWithoutValues()
+    {
+        var detail = SecurityEventDetail.TenantChange(
+            previousActive: true,
+            nextActive: true,
+            nameChanged: false,
+            changedFields: ["noticesEmail", "incidentTelephone"]);
+
+        Assert.Equal("fields=noticesEmail,incidentTelephone", detail);
+        Assert.DoesNotContain("@", detail, StringComparison.Ordinal);
+    }
 }
