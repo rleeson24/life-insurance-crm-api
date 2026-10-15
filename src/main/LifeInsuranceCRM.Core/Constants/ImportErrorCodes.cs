@@ -8,4 +8,6 @@ public static class ImportErrorCodes
     public const string NoClients = "import.no_clients";
     public const string InProgress = "import.in_progress";
     public const string PayloadTooLarge = "import.payload.too_large";
+    public const string ProfileInvalid = "import.profile.invalid";
+    public const string ProfileNotFound = "import.profile.not_found";
 }

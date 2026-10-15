@@ -1,4 +1,4 @@
-# Applies live/*.sql in the same order as Aspire LiveSchemaScripts (001–014).
+# Applies live/*.sql in the same order as Aspire LiveSchemaScripts (001–015).
 # Scripts are idempotent; re-running is safe.
 #
 # Azure SQL (private endpoint): Entra token, brief public access for your IP, then close.
@@ -51,7 +51,8 @@ $scriptFiles = @(
     '011_PlanNameLists.sql',
     '012_ClientFieldEncryption.sql',
     '013_BypassTenantFilter.sql',
-    '014_AuthSecurityEventDetails.sql'
+    '014_AuthSecurityEventDetails.sql',
+    '015_ImportMappingProfiles.sql'
 )
 
 if ($IncludeSeed) {
