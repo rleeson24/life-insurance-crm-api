@@ -90,8 +90,17 @@ param sqlAutoPauseDelay int = environment == 'prod' ? -1 : 60
 @description('Serverless minimum vCores when not paused.')
 param sqlMinCapacity string = '0.5'
 
-@description('Log Analytics retention in days. PerGB2018 SKU minimum is 30.')
+@description('Log Analytics workspace default retention in days. PerGB2018 SKU minimum is 30. Compliance tables can retain longer via table retention.')
 param logAnalyticsRetentionInDays int = 30
+
+@description('12-month total retention on AzureActivity, AzureDiagnostics, and SQLSecurityAuditEvents (prod).')
+param enableLogAnalyticsComplianceTableRetention bool = environment == 'prod'
+
+@description('Interactive KQL retention on compliance Log Analytics tables.')
+param logAnalyticsComplianceTableAnalyticsRetentionInDays int = 90
+
+@description('Total retention on compliance tables (long-term retention applies after the analytics period).')
+param logAnalyticsComplianceTableTotalRetentionInDays int = 365
 
 @description('Send SQL audit logs to Azure Monitor. Disabled in dev to reduce ingestion cost.')
 param enableSqlAuditing bool = environment == 'prod'
@@ -149,6 +158,9 @@ module monitor 'modules/monitor.bicep' = {
     baseName: baseName
     tags: tags
     retentionInDays: logAnalyticsRetentionInDays
+    enableComplianceTableRetention: enableLogAnalyticsComplianceTableRetention
+    complianceTableAnalyticsRetentionInDays: logAnalyticsComplianceTableAnalyticsRetentionInDays
+    complianceTableTotalRetentionInDays: logAnalyticsComplianceTableTotalRetentionInDays
   }
 }
 

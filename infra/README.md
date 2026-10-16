@@ -48,7 +48,8 @@ Sizing is parameterized per environment. Defaults target the **lowest viable com
 | Container App replicas | 0–1 each (scale to zero when idle) | 1–2 each (always at least one) |
 | Azure SQL | Serverless GP_S_Gen5 (auto-pause after 60 min idle) | Basic (~$5/mo; bump to S0/Standard when needed) |
 | ACR | Basic | Basic |
-| Log Analytics retention | 30 days (PerGB2018 minimum) | 30 days |
+| Log Analytics workspace default | 30 days (PerGB2018 minimum) | 30 days |
+| Log Analytics compliance tables | Off | **90 days interactive + 365 days total** on `AzureActivity`, `AzureDiagnostics`, `SQLSecurityAuditEvents` (long-term retention after 90 days) |
 | SQL backups | Local redundancy, no LTR | Geo redundancy + 4 weeks / 12 months / 5 years LTR |
 | SQL auditing / diagnostics | Off (saves ingestion) | On |
 
@@ -190,6 +191,8 @@ After deploying infra:
 Infra grants the API system identity **Key Vault Secrets User** (read) and **Key Vault Crypto User** (unwrap the field-encryption DEK). **AcrPull** is granted to the user-assigned pull identity that the Container App uses to pull from ACR. Deploy API grants AcrPull to the system identity itself when it points the registry at that identity. Humans who set secrets need **Key Vault Secrets Officer**. SQL still needs the one-time Entra database user script above.
 
 The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource group, not Contributor. It can deploy the platform and the API, and cannot delete the SQL server or database, delete long-term retention backups, purge Key Vault, delete Log Analytics or diagnostic settings, delete resource locks, or export the database. The client GitHub identity has AcrPush on the registry and Container Apps Contributor on the web app and on the environment (environment join only; that role does not grant environment write). It cannot change the API app.
+
+Prod Bicep enables **compliance table retention** on `AzureActivity`, `AzureDiagnostics`, and `SQLSecurityAuditEvents` (90-day interactive KQL, 365-day total including long-term retention). Override with `logAnalyticsComplianceTableAnalyticsRetentionInDays` / `logAnalyticsComplianceTableTotalRetentionInDays` in [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Application Insights tables keep the workspace default (30 days).
 
 A local prod run of `deploy-infra.ps1` sends the subscription **Administrative** activity log to the prod Log Analytics workspace and puts **CanNotDelete** locks on the SQL server, Key Vault, and that workspace. The GitHub workflow does not do those two steps. High-risk activity in the resource group emails `securityAlertEmail` from [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Leave that empty to skip the alerts. Dev does not get locks or alerts.
 
