@@ -2,7 +2,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY LifeInsuranceCRM.slnx ./
+COPY Directory.Build.props ./
 COPY main/LifeInsuranceCRM.API.csproj main/
+COPY main/LifeInsuranceCRM.Providers/LifeInsuranceCRM.Providers.csproj main/LifeInsuranceCRM.Providers/
 COPY main/LifeInsuranceCRM.Core/LifeInsuranceCRM.Core.csproj main/LifeInsuranceCRM.Core/
 COPY main/LifeInsuranceCRM.Data/LifeInsuranceCRM.Data.csproj main/LifeInsuranceCRM.Data/
 COPY main/LifeInsuranceCRM.Utilities/LifeInsuranceCRM.Utilities.csproj main/LifeInsuranceCRM.Utilities/
