@@ -28,5 +28,6 @@ param sqlSkuCapacity = 1
 param sqlAutoPauseDelay = 60
 param sqlMinCapacity = '0.5'
 param logAnalyticsRetentionInDays = 30
+param enableLogAnalyticsComplianceTableRetention = false
 param enableSqlAuditing = false
 param enableSqlDiagnostics = false
