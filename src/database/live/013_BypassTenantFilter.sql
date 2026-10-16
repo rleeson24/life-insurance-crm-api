@@ -31,3 +31,20 @@ BEGIN
     WITH (STATE = ON);
 END
 GO
+
+-- 015 creates ImportMappingProfiles after this policy is rebuilt. Re-running 013
+-- on a database that already has the table must put the predicate back.
+IF OBJECT_ID(N'dbo.ImportMappingProfiles', N'U') IS NOT NULL
+   AND EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'TenantPolicy')
+   AND NOT EXISTS (
+        SELECT 1
+        FROM sys.security_predicates sp
+        INNER JOIN sys.objects o ON sp.target_object_id = o.object_id
+        WHERE o.name = N'ImportMappingProfiles'
+          AND SCHEMA_NAME(o.schema_id) = N'dbo'
+   )
+BEGIN
+    ALTER SECURITY POLICY dbo.TenantPolicy
+        ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.ImportMappingProfiles;
+END
+GO

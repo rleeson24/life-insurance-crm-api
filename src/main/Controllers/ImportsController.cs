@@ -36,4 +36,27 @@ public sealed class ImportsController : ApiControllerBase
         FromUseCase(
             useCase.Execute(_processRequestFactory.Create(model, cancellationToken)),
             created => new ObjectResult(created) { StatusCode = StatusCodes.Status201Created });
+
+    [HttpGet("profiles")]
+    [Authorize(Policy = AuthorizationPolicies.CanDelete)]
+    public Task<IActionResult> ListProfiles(
+        [FromServices] IListImportMappingProfilesUseCase useCase,
+        CancellationToken cancellationToken) =>
+        FromUseCase(useCase.Execute(_processRequestFactory.Create(true, cancellationToken)));
+
+    [HttpPost("profiles")]
+    [Authorize(Policy = AuthorizationPolicies.CanDelete)]
+    public Task<IActionResult> SaveProfile(
+        [FromBody] SaveImportMappingProfileModel model,
+        [FromServices] ISaveImportMappingProfileUseCase useCase,
+        CancellationToken cancellationToken) =>
+        FromUseCase(useCase.Execute(_processRequestFactory.Create(model, cancellationToken)));
+
+    [HttpDelete("profiles/{importMappingProfileId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanDelete)]
+    public Task<IActionResult> DeleteProfile(
+        Guid importMappingProfileId,
+        [FromServices] IDeleteImportMappingProfileUseCase useCase,
+        CancellationToken cancellationToken) =>
+        FromUseCase(useCase.Execute(_processRequestFactory.Create(importMappingProfileId, cancellationToken)));
 }
