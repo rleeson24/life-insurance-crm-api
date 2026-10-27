@@ -3,6 +3,7 @@
 // is applied only by deploy-infra.ps1 (the local Owner). Do not add it to main.bicep.
 
 param sqlServerName string
+param databaseName string = 'BrokerBook'
 param keyVaultName string
 param logAnalyticsWorkspaceName string
 
@@ -10,6 +11,11 @@ var lockNotes = 'Production data and backups. Only a subscription Owner can remo
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' existing = {
   name: sqlServerName
+}
+
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' existing = {
+  parent: sqlServer
+  name: databaseName
 }
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -20,12 +26,23 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' exis
   name: logAnalyticsWorkspaceName
 }
 
-resource sqlLock 'Microsoft.Authorization/locks@2020-05-01' = {
+resource sqlServerLock 'Microsoft.Authorization/locks@2020-05-01' = {
   scope: sqlServer
   name: 'cannot-delete'
   properties: {
     level: 'CanNotDelete'
     notes: lockNotes
+  }
+}
+
+// Kept in addition to the server lock. If the server lock is removed to delete a
+// restore-test database, BrokerBook and the server that contains it stay protected.
+resource sqlDatabaseLock 'Microsoft.Authorization/locks@2020-05-01' = {
+  scope: sqlDatabase
+  name: 'cannot-delete'
+  properties: {
+    level: 'CanNotDelete'
+    notes: 'Production BrokerBook database. Only a subscription Owner can remove this lock.'
   }
 }
 

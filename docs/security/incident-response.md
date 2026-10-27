@@ -13,7 +13,7 @@ These identities are separate, use MFA, and are not used for GitHub or the app:
 
 Break-glass cloud accounts are also described in [entra-policies.md](entra-policies.md). They are excluded from Conditional Access, stored offline, and unused day to day.
 
-Production locks sit on the SQL server, Key Vault, and Log Analytics workspace. Dev has no locks. Only a subscription Owner or User Access Administrator can remove a lock. Do not remove one to make a deploy succeed.
+Production locks sit on the SQL server, the BrokerBook database, Key Vault, and Log Analytics workspace. The server lock also covers every database on that server. The database lock remains if the server lock is removed to delete a restore-test copy, and it still prevents deleting BrokerBook and the SQL server. Dev has no locks. Only a subscription Owner or User Access Administrator can remove a lock. Do not remove one to make a deploy succeed.
 
 ## Disable a person
 
