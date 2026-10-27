@@ -101,13 +101,14 @@ IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'TenantPolicy')
    AND NOT EXISTS (
         SELECT 1
         FROM sys.security_predicates sp
-        INNER JOIN sys.objects o ON sp.target_object_id = o.object_id
-        WHERE o.name = N'MedicarePlanNames'
-          AND SCHEMA_NAME(o.schema_id) = N'dbo'
+        WHERE sp.object_id = OBJECT_ID(N'dbo.TenantPolicy')
+          AND sp.target_object_id = OBJECT_ID(N'dbo.MedicarePlanNames')
+          AND sp.predicate_type = 0
    )
 BEGIN
-    ALTER SECURITY POLICY dbo.TenantPolicy
-        ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.MedicarePlanNames;
+    -- ALTER SECURITY POLICY is bound at compile time, so a direct statement fails
+    -- when the predicate already exists even inside IF NOT EXISTS.
+    EXEC(N'ALTER SECURITY POLICY dbo.TenantPolicy ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.MedicarePlanNames;');
 END
 GO
 
@@ -115,13 +116,12 @@ IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'TenantPolicy')
    AND NOT EXISTS (
         SELECT 1
         FROM sys.security_predicates sp
-        INNER JOIN sys.objects o ON sp.target_object_id = o.object_id
-        WHERE o.name = N'DrugPlanNames'
-          AND SCHEMA_NAME(o.schema_id) = N'dbo'
+        WHERE sp.object_id = OBJECT_ID(N'dbo.TenantPolicy')
+          AND sp.target_object_id = OBJECT_ID(N'dbo.DrugPlanNames')
+          AND sp.predicate_type = 0
    )
 BEGIN
-    ALTER SECURITY POLICY dbo.TenantPolicy
-        ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.DrugPlanNames;
+    EXEC(N'ALTER SECURITY POLICY dbo.TenantPolicy ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.DrugPlanNames;');
 END
 GO
 
@@ -129,12 +129,11 @@ IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = N'TenantPolicy')
    AND NOT EXISTS (
         SELECT 1
         FROM sys.security_predicates sp
-        INNER JOIN sys.objects o ON sp.target_object_id = o.object_id
-        WHERE o.name = N'SecondaryPlanNames'
-          AND SCHEMA_NAME(o.schema_id) = N'dbo'
+        WHERE sp.object_id = OBJECT_ID(N'dbo.TenantPolicy')
+          AND sp.target_object_id = OBJECT_ID(N'dbo.SecondaryPlanNames')
+          AND sp.predicate_type = 0
    )
 BEGIN
-    ALTER SECURITY POLICY dbo.TenantPolicy
-        ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.SecondaryPlanNames;
+    EXEC(N'ALTER SECURITY POLICY dbo.TenantPolicy ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.SecondaryPlanNames;');
 END
 GO

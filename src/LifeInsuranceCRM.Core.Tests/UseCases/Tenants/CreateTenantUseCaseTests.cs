@@ -70,7 +70,11 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
         ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
         NowProvider.Setup(n => n.UtcNow).Returns(_now);
         TenantRepository
-            .Setup(r => r.InsertAsync("North Agency", It.IsAny<AuditStamp>(), _ct))
+            .Setup(r => r.InsertAsync(
+                "North Agency",
+                It.IsAny<TenantContactFields>(),
+                It.IsAny<AuditStamp>(),
+                _ct))
             .ReturnsAsync(_createdTenant);
 
         var response = await BuildSubject().Execute(ProcessRequest<CreateTenantModel>.From(_inputModel, _ct));
@@ -85,7 +89,11 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
         ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
         NowProvider.Setup(n => n.UtcNow).Returns(_now);
         TenantRepository
-            .Setup(r => r.InsertAsync("North Agency", It.IsAny<AuditStamp>(), _ct))
+            .Setup(r => r.InsertAsync(
+                "North Agency",
+                It.IsAny<TenantContactFields>(),
+                It.IsAny<AuditStamp>(),
+                _ct))
             .ReturnsAsync(_createdTenant);
         var recorder = new Mock<IAuthSecurityEventRecorder>();
         recorder
@@ -135,5 +143,43 @@ public class CreateTenantUseCaseTests : UseCaseTestBase<CreateTenantUseCase>
                 It.IsAny<Guid?>(),
                 It.Is<string?>(detail => detail != null && detail.Contains("North Agency"))),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task Execute_WhenSuperAdmin_StoresTrimmedContactDetails()
+    {
+        ActorTracker.SetupAuthenticatedActor(_userId, _tenantId, OrganizationRoles.SuperAdmin);
+        NowProvider.Setup(n => n.UtcNow).Returns(_now);
+        var model = new CreateTenantModel
+        {
+            Name = "North Agency",
+            AddressLine1 = " 1 Main St ",
+            AddressLine2 = " ",
+            City = " Boston ",
+            State = "ma",
+            PostalCode = " 02110 ",
+            NoticesEmail = " notices@example.com ",
+            IncidentContact = " Ada Lovelace ",
+            IncidentTelephone = " 555-0100 ",
+        };
+        TenantRepository
+            .Setup(r => r.InsertAsync(
+                "North Agency",
+                It.Is<TenantContactFields>(contact =>
+                    contact.AddressLine1 == "1 Main St"
+                    && contact.AddressLine2 == null
+                    && contact.City == "Boston"
+                    && contact.State == "MA"
+                    && contact.PostalCode == "02110"
+                    && contact.NoticesEmail == "notices@example.com"
+                    && contact.IncidentContact == "Ada Lovelace"
+                    && contact.IncidentTelephone == "555-0100"),
+                It.IsAny<AuditStamp>(),
+                _ct))
+            .ReturnsAsync(_createdTenant);
+
+        var response = await BuildSubject().Execute(ProcessRequest<CreateTenantModel>.From(model, _ct));
+
+        Assert.Equal(UseCaseStatus.Success, response.Status);
     }
 }

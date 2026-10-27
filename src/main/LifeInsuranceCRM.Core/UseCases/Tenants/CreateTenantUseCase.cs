@@ -58,6 +58,7 @@ public sealed class CreateTenantUseCase : ICreateTenantUseCase
         var audit = _clientUseCaseHelpers.CreateAuditStamp(_actorTracker, _nowProvider);
         var created = await _tenantRepository.InsertAsync(
             request.Payload.Name!.Trim(),
+            TenantUseCaseHelpers.NormalizeContact(request.Payload),
             audit,
             request.CancellationToken);
 

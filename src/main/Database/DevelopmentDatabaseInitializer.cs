@@ -58,14 +58,34 @@ public sealed class DevelopmentDatabaseInitializer : IDevelopmentDatabaseInitial
            AND NOT EXISTS (
                 SELECT 1
                 FROM sys.security_predicates sp
-                INNER JOIN sys.objects o ON sp.target_object_id = o.object_id
-                WHERE o.name = N'ImportMappingProfiles'
-                  AND SCHEMA_NAME(o.schema_id) = N'dbo'
+                WHERE sp.object_id = OBJECT_ID(N'dbo.TenantPolicy')
+                  AND sp.target_object_id = OBJECT_ID(N'dbo.ImportMappingProfiles')
+                  AND sp.predicate_type = 0
            )
         BEGIN
-            ALTER SECURITY POLICY dbo.TenantPolicy
-                ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.ImportMappingProfiles;
+            -- Compiled immediately, so a direct ALTER fails while the predicate exists
+            -- even inside this IF. Defer it until the check has passed.
+            EXEC(N'ALTER SECURITY POLICY dbo.TenantPolicy ADD FILTER PREDICATE dbo.fn_TenantFilter(TenantId) ON dbo.ImportMappingProfiles;');
         END
+        """;
+
+    private const string EnsureTenantContactSql = """
+        IF COL_LENGTH('dbo.Tenants', 'AddressLine1') IS NULL
+            ALTER TABLE dbo.Tenants ADD AddressLine1 nvarchar(200) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'AddressLine2') IS NULL
+            ALTER TABLE dbo.Tenants ADD AddressLine2 nvarchar(200) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'City') IS NULL
+            ALTER TABLE dbo.Tenants ADD City nvarchar(100) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'State') IS NULL
+            ALTER TABLE dbo.Tenants ADD State nvarchar(2) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'PostalCode') IS NULL
+            ALTER TABLE dbo.Tenants ADD PostalCode nvarchar(10) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'NoticesEmail') IS NULL
+            ALTER TABLE dbo.Tenants ADD NoticesEmail nvarchar(320) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'IncidentContact') IS NULL
+            ALTER TABLE dbo.Tenants ADD IncidentContact nvarchar(200) NULL;
+        IF COL_LENGTH('dbo.Tenants', 'IncidentTelephone') IS NULL
+            ALTER TABLE dbo.Tenants ADD IncidentTelephone nvarchar(32) NULL;
         """;
 
     private const string EnsureDevUserSql = """
@@ -114,6 +134,7 @@ public sealed class DevelopmentDatabaseInitializer : IDevelopmentDatabaseInitial
             await ExecuteNonQueryAsync(connection, EnsureImportMappingProfilesSql, cancellationToken);
             await ExecuteNonQueryAsync(connection, EnsureImportMappingProfileIndexSql, cancellationToken);
             await ExecuteNonQueryAsync(connection, EnsureImportMappingProfilePolicySql, cancellationToken);
+            await ExecuteNonQueryAsync(connection, EnsureTenantContactSql, cancellationToken);
             await ExecuteNonQueryAsync(connection, EnsureDevUserSql, cancellationToken);
 
             _logger.LogInformation("Development database initialization completed");

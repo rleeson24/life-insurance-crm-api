@@ -76,10 +76,12 @@ public sealed class UpdateTenantUseCase : IUpdateTenantUseCase
         var name = string.IsNullOrWhiteSpace(request.Payload.Name)
             ? null
             : request.Payload.Name.Trim();
+        var contact = TenantUseCaseHelpers.MergeContact(request.Payload, existing);
         var updated = await _tenantRepository.UpdateAsync(
             request.Payload.TenantId,
             name,
             request.Payload.IsActive,
+            contact,
             audit,
             request.CancellationToken);
 
@@ -100,7 +102,11 @@ public sealed class UpdateTenantUseCase : IUpdateTenantUseCase
         var nextActive = request.Payload.IsActive ?? existing.IsActive;
         var nameChanged = !string.IsNullOrWhiteSpace(name)
             && !string.Equals(name, existing.Name, StringComparison.Ordinal);
-        var detail = SecurityEventDetail.TenantChange(existing.IsActive, nextActive, nameChanged);
+        var detail = SecurityEventDetail.TenantChange(
+            existing.IsActive,
+            nextActive,
+            nameChanged,
+            TenantUseCaseHelpers.ChangedContactFields(existing, contact));
         if (detail is not null)
         {
             await RecordChangeAsync(
