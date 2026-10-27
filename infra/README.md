@@ -194,7 +194,7 @@ The API GitHub identity gets **BrokerBook GitHub Deployer** on the resource grou
 
 Prod Bicep enables **compliance table retention** on `AzureActivity`, `AzureDiagnostics`, and `SQLSecurityAuditEvents` (90-day interactive KQL, 365-day total including long-term retention). Override with `logAnalyticsComplianceTableAnalyticsRetentionInDays` / `logAnalyticsComplianceTableTotalRetentionInDays` in [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Application Insights tables keep the workspace default (30 days).
 
-A local prod run of `deploy-infra.ps1` sends the subscription **Administrative** activity log to the prod Log Analytics workspace and puts **CanNotDelete** locks on the SQL server, Key Vault, and that workspace. The GitHub workflow does not do those two steps. High-risk activity in the resource group emails `securityAlertEmail` from [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Leave that empty to skip the alerts. Dev does not get locks or alerts.
+A local prod run of `deploy-infra.ps1` sends the subscription **Administrative** activity log to the prod Log Analytics workspace and puts **CanNotDelete** locks on the SQL server, the production database, Key Vault, and that workspace. The server lock also covers every database on that server. The database lock remains if the server lock is removed to delete a restore-test copy. The GitHub workflow does not do those two steps. High-risk activity in the resource group emails `securityAlertEmail` from [`parameters/prod.bicepparam`](parameters/prod.bicepparam). Leave that empty to skip the alerts. Dev does not get locks or alerts.
 
 Suspected compromise: [docs/security/incident-response.md](../docs/security/incident-response.md).
 

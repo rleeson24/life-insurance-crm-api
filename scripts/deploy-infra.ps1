@@ -160,6 +160,7 @@ function Enable-ProdAdminGuardrails {
     $workspaceId = $outputs.logAnalyticsWorkspaceId.value
     $workspaceName = $outputs.logAnalyticsWorkspaceName.value
     $sqlServerName = $outputs.sqlServerName.value
+    $databaseName = $outputs.databaseName.value
     $keyVaultName = $outputs.keyVaultName.value
 
     Write-Host "Sending Administrative activity logs to $workspaceName..."
@@ -175,13 +176,14 @@ function Enable-ProdAdminGuardrails {
         throw "Activity log diagnostic setting failed (exit code $LASTEXITCODE)."
     }
 
-    Write-Host "Applying CanNotDelete locks on SQL, Key Vault, and Log Analytics..."
+    Write-Host "Applying CanNotDelete locks on the SQL server, production database, Key Vault, and Log Analytics..."
     $lockArgs = @(
         'deployment', 'group', 'create',
         '--resource-group', $ResourceGroup,
         '--name', 'resource-locks',
         '--template-file', 'infra/modules/resource-locks.bicep',
         '--parameters', "sqlServerName=$sqlServerName",
+        '--parameters', "databaseName=$databaseName",
         '--parameters', "keyVaultName=$keyVaultName",
         '--parameters', "logAnalyticsWorkspaceName=$workspaceName"
     )
