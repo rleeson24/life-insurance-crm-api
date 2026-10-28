@@ -96,12 +96,25 @@ IF IS_ROLEMEMBER('db_datawriter', '$ContainerAppName') <> 1
     Write-Host 'Done. Restart the Container App if /health is still failing.'
 } finally {
     if ($openedPublic) {
-        Write-Host 'Removing bootstrap firewall rule and disabling public network access...'
-        az sql server firewall-rule delete `
+        # CanNotDelete on the production SQL server blocks firewall-rule delete.
+        # Narrow the rule before public access is turned off; Azure then rejects firewall changes.
+        Write-Host 'Disabling public network access...'
+        $previousErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        az sql server firewall-rule update `
             --resource-group $ResourceGroup `
             --server $SqlServer `
             --name $ruleName `
-            --only-show-errors 2>$null
+            --start-ip-address 255.255.255.255 `
+            --end-ip-address 255.255.255.255 `
+            --only-show-errors | Out-Null
         az sql server update --name $SqlServer --resource-group $ResourceGroup --enable-public-network false --only-show-errors | Out-Null
+        $disableExit = $LASTEXITCODE
+        $ErrorActionPreference = $previousErrorAction
+        if ($disableExit -ne 0) {
+            throw "Public network access is still enabled on $SqlServer. Turn it off before leaving this session."
+        }
+
+        Write-Host "Public network access disabled. Firewall rule $ruleName remains when the server lock blocks delete."
     }
 }
