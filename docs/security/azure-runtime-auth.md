@@ -36,7 +36,7 @@ Key Vault secret names use `--` for hierarchy, e.g. `AzureAd--ClientId` → `Azu
 | `FieldEncryption--WrappedDek` | `FieldEncryption:WrappedDek` | Optional. RSA-OAEP-256 wrap of the same 32-byte DEK using the vault key `field-encryption`. Preferred over a raw DEK secret. |
 | `FieldEncryption--BlindIndexKey` | `FieldEncryption:BlindIndexKey` | Azure: 32-byte HMAC key as base64 for Medicare number blind indexes. Must be distinct from the DEK. Local Development uses a built-in non-prod key if empty. |
 
-Field-level encryption (phase 2.1) encrypts `MedicareNumber`, `DateOfBirth`, `MedicarePartAEffectiveDate`, and `MedicarePartBEffectiveDate` in the API before SQL writes. Those columns are `varbinary(max)` (`012_ClientFieldEncryption.sql`). Name, phone, and email stay searchable plaintext.
+Field-level encryption (phase 2.1) encrypts `MedicareNumber`, `DateOfBirth`, `MedicarePartAEffectiveDate`, and `MedicarePartBEffectiveDate` in the API before SQL writes. Those columns are `varbinary(max)` (`012_ClientFieldEncryption.sql`). Name, phone, and email stay searchable plaintext. Rotation, recovery, and revocation are in [field-encryption-key-rotation.md](field-encryption-key-rotation.md). Do not replace a production data key from the bootstrap commands below.
 
 Medicare number **search** uses a keyed HMAC blind index in `MedicareNumberBlindIndex` (same script). The API normalizes the query (uppercase, strip dashes) and looks up the 32-byte hash. The index is not reversible to the MBI.
 
